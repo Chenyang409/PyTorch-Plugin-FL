@@ -12,92 +12,92 @@
 extern "C" {
 #endif
 
-typedef enum foError_t {
-  foSuccess = 0,
-  foErrorUnknown = 1,
-  foErrorNotReady = 2,
-  foErrorInvalidDevice = 3,
-  foErrorMemoryAllocation = 4,
-} foError_t;
+typedef enum Error_t {
+  Success = 0,
+  ErrorUnknown = 1,
+  ErrorNotReady = 2,
+  ErrorInvalidDevice = 3,
+  ErrorMemoryAllocation = 4,
+} Error_t;
 
-typedef enum foMemcpyKind {
-  foMemcpyHostToHost = 0,
-  foMemcpyHostToDevice = 1,
-  foMemcpyDeviceToHost = 2,
-  foMemcpyDeviceToDevice = 3
-} foMemcpyKind;
+typedef enum MemcpyKind {
+  MemcpyHostToHost = 0,
+  MemcpyHostToDevice = 1,
+  MemcpyDeviceToHost = 2,
+  MemcpyDeviceToDevice = 3
+} MemcpyKind;
 
-typedef enum foMemoryType {
-  foMemoryTypeUnmanaged = 0,
-  foMemoryTypeHost = 1,
-  foMemoryTypeDevice = 2
-} foMemoryType;
+typedef enum MemoryType {
+  MemoryTypeUnmanaged = 0,
+  MemoryTypeHost = 1,
+  MemoryTypeDevice = 2
+} MemoryType;
 
-struct foPointerAttributes {
-  foMemoryType type;
+struct PointerAttributes {
+  MemoryType type;
   int device;
   void* pointer;
 };
 
-typedef enum foEventFlags {
-  foEventDisableTiming = 0x0,
-  foEventEnableTiming = 0x1,
-} foEventFlags;
+typedef enum EventFlags {
+  EventDisableTiming = 0x0,
+  EventEnableTiming = 0x1,
+} EventFlags;
 
-struct foStream;
-struct foEvent;
-typedef struct foStream* foStream_t;
-typedef struct foEvent* foEvent_t;
+struct Stream;
+struct Event;
+typedef struct Stream* Stream_t;
+typedef struct Event* Event_t;
 
 // Memory
-FLAGOS_EXPORT foError_t foMalloc(void** devPtr, size_t size);
-FLAGOS_EXPORT foError_t foFree(void* devPtr);
-FLAGOS_EXPORT foError_t foMallocHost(void** hostPtr, size_t size);
-FLAGOS_EXPORT foError_t foFreeHost(void* hostPtr);
-FLAGOS_EXPORT foError_t
-foMemcpy(void* dst, const void* src, size_t count, foMemcpyKind kind);
-FLAGOS_EXPORT foError_t foMemcpyAsync(
+FLAGOS_EXPORT Error_t Malloc(void** devPtr, size_t size);
+FLAGOS_EXPORT Error_t Free(void* devPtr);
+FLAGOS_EXPORT Error_t MallocHost(void** hostPtr, size_t size);
+FLAGOS_EXPORT Error_t FreeHost(void* hostPtr);
+FLAGOS_EXPORT Error_t
+Memcpy(void* dst, const void* src, size_t count, MemcpyKind kind);
+FLAGOS_EXPORT Error_t MemcpyAsync(
     void* dst,
     const void* src,
     size_t count,
-    foMemcpyKind kind,
-    foStream_t stream);
-FLAGOS_EXPORT foError_t
-foPointerGetAttributes(foPointerAttributes* attributes, const void* ptr);
-FLAGOS_EXPORT foError_t foMemset(void* devPtr, int value, size_t count);
-FLAGOS_EXPORT foError_t foMemsetAsync(void* devPtr, int value, size_t count, foStream_t stream);
+    MemcpyKind kind,
+    Stream_t stream);
+FLAGOS_EXPORT Error_t
+PointerGetAttributes(PointerAttributes* attributes, const void* ptr);
+FLAGOS_EXPORT Error_t Memset(void* devPtr, int value, size_t count);
+FLAGOS_EXPORT Error_t MemsetAsync(void* devPtr, int value, size_t count, Stream_t stream);
 
 // Device
-FLAGOS_EXPORT foError_t foGetDeviceCount(int* count);
-FLAGOS_EXPORT foError_t foSetDevice(int device);
-FLAGOS_EXPORT foError_t foGetDevice(int* device);
-FLAGOS_EXPORT foError_t
-foDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority);
-FLAGOS_EXPORT foError_t foDeviceSynchronize(void);
+FLAGOS_EXPORT Error_t GetDeviceCount(int* count);
+FLAGOS_EXPORT Error_t SetDevice(int device);
+FLAGOS_EXPORT Error_t GetDevice(int* device);
+FLAGOS_EXPORT Error_t
+DeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority);
+FLAGOS_EXPORT Error_t DeviceSynchronize(void);
 
 // Stream
-FLAGOS_EXPORT foError_t foStreamCreateWithPriority(
-    foStream_t* stream,
+FLAGOS_EXPORT Error_t StreamCreateWithPriority(
+    Stream_t* stream,
     unsigned int flags,
     int priority);
-FLAGOS_EXPORT foError_t foStreamCreate(foStream_t* stream);
-FLAGOS_EXPORT foError_t foStreamGetPriority(foStream_t stream, int* priority);
-FLAGOS_EXPORT foError_t foStreamDestroy(foStream_t stream);
-FLAGOS_EXPORT foError_t foStreamQuery(foStream_t stream);
-FLAGOS_EXPORT foError_t foStreamSynchronize(foStream_t stream);
-FLAGOS_EXPORT foError_t
-foStreamWaitEvent(foStream_t stream, foEvent_t event, unsigned int flags);
+FLAGOS_EXPORT Error_t StreamCreate(Stream_t* stream);
+FLAGOS_EXPORT Error_t StreamGetPriority(Stream_t stream, int* priority);
+FLAGOS_EXPORT Error_t StreamDestroy(Stream_t stream);
+FLAGOS_EXPORT Error_t StreamQuery(Stream_t stream);
+FLAGOS_EXPORT Error_t StreamSynchronize(Stream_t stream);
+FLAGOS_EXPORT Error_t
+StreamWaitEvent(Stream_t stream, Event_t event, unsigned int flags);
 
 // Event
-FLAGOS_EXPORT foError_t
-foEventCreateWithFlags(foEvent_t* event, unsigned int flags);
-FLAGOS_EXPORT foError_t foEventCreate(foEvent_t* event);
-FLAGOS_EXPORT foError_t foEventDestroy(foEvent_t event);
-FLAGOS_EXPORT foError_t foEventRecord(foEvent_t event, foStream_t stream);
-FLAGOS_EXPORT foError_t foEventSynchronize(foEvent_t event);
-FLAGOS_EXPORT foError_t foEventQuery(foEvent_t event);
-FLAGOS_EXPORT foError_t
-foEventElapsedTime(float* ms, foEvent_t start, foEvent_t end);
+FLAGOS_EXPORT Error_t
+EventCreateWithFlags(Event_t* event, unsigned int flags);
+FLAGOS_EXPORT Error_t EventCreate(Event_t* event);
+FLAGOS_EXPORT Error_t EventDestroy(Event_t event);
+FLAGOS_EXPORT Error_t EventRecord(Event_t event, Stream_t stream);
+FLAGOS_EXPORT Error_t EventSynchronize(Event_t event);
+FLAGOS_EXPORT Error_t EventQuery(Event_t event);
+FLAGOS_EXPORT Error_t
+EventElapsedTime(float* ms, Event_t start, Event_t end);
 
 #ifdef __cplusplus
 } // extern "C"

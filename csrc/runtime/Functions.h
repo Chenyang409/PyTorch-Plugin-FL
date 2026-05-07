@@ -15,9 +15,9 @@ namespace c10::flagos {
 
 using DeviceIndex = int8_t;
 
-foError_t GetDeviceCount(int* dev_count);
-foError_t GetDevice(DeviceIndex* device);
-foError_t SetDevice(DeviceIndex device);
+Error_t GetDeviceCount(int* dev_count);
+Error_t GetDevice(DeviceIndex* device);
+Error_t SetDevice(DeviceIndex device);
 
 FLAGOS_EXPORT DeviceIndex device_count() noexcept;
 FLAGOS_EXPORT DeviceIndex current_device();

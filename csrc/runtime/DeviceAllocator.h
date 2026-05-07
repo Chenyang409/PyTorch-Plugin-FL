@@ -22,18 +22,18 @@ struct DeviceAllocator final : at::Allocator {
     if (!ptr) {
       return;
     }
-    foFree(ptr);
+    ::Free(ptr);
   }
 
   at::DataPtr allocate(size_t nbytes) override {
     int current_device_index = -1;
-    foGetDevice(&current_device_index);
+    ::GetDevice(&current_device_index);
 
     auto curr_device =
         c10::Device(c10::DeviceType::PrivateUse1, current_device_index);
     void* data = nullptr;
     if (nbytes > 0) {
-      foMalloc(&data, nbytes);
+      ::Malloc(&data, nbytes);
       TORCH_CHECK(
           data, "Failed to allocate ", nbytes, " bytes on flagos device.");
     }
@@ -45,7 +45,7 @@ struct DeviceAllocator final : at::Allocator {
   }
 
   void copy_data(void* dest, const void* src, std::size_t count) const final {
-    foMemcpy(dest, src, count, foMemcpyDeviceToDevice);
+    ::Memcpy(dest, src, count, MemcpyDeviceToDevice);
   }
 };
 

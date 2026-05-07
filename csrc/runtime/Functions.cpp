@@ -14,24 +14,24 @@
 
 namespace c10::flagos {
 
-foError_t GetDeviceCount(int* dev_count) {
-  return foGetDeviceCount(dev_count);
+Error_t GetDeviceCount(int* dev_count) {
+  return ::GetDeviceCount(dev_count);
 }
 
-foError_t GetDevice(DeviceIndex* device) {
+Error_t GetDevice(DeviceIndex* device) {
   int tmp_device = -1;
-  auto err = foGetDevice(&tmp_device);
+  auto err = ::GetDevice(&tmp_device);
   *device = static_cast<DeviceIndex>(tmp_device);
   return err;
 }
 
-foError_t SetDevice(DeviceIndex device) {
+Error_t SetDevice(DeviceIndex device) {
   int cur_device = -1;
-  foGetDevice(&cur_device);
+  ::GetDevice(&cur_device);
   if (device == cur_device) {
-    return foSuccess;
+    return Success;
   }
-  return foSetDevice(device);
+  return ::SetDevice(device);
 }
 
 int device_count_impl() {
@@ -70,10 +70,10 @@ FLAGOS_EXPORT void set_device(DeviceIndex device) {
 
 FLAGOS_EXPORT DeviceIndex ExchangeDevice(DeviceIndex device) {
   int current_dev = -1;
-  foGetDevice(&current_dev);
+  ::GetDevice(&current_dev);
 
   if (device != current_dev) {
-    foSetDevice(device);
+    ::SetDevice(device);
   }
 
   return static_cast<DeviceIndex>(current_dev);

@@ -230,7 +230,7 @@ PyObject* _getDeviceCount(PyObject* self, PyObject* noargs) {
 
 PyObject* _synchronize(PyObject* self, PyObject* noargs) {
   HANDLE_TH_ERRORS
-  foDeviceSynchronize();
+  DeviceSynchronize();
   Py_RETURN_NONE;
   END_HANDLE_TH_ERRORS
 }

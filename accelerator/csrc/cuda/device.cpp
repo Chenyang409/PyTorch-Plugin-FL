@@ -8,54 +8,54 @@ thread_local int gCurrentDevice = 0;
 
 } // namespace
 
-foError_t foGetDeviceCount(int* count) {
+Error_t GetDeviceCount(int* count) {
   if (!count) {
-    return foErrorUnknown;
+    return ErrorUnknown;
   }
 
   int cuda_count = 0;
   cudaError_t err = cudaGetDeviceCount(&cuda_count);
   if (err != cudaSuccess) {
     *count = 0;
-    return foErrorUnknown;
+    return ErrorUnknown;
   }
 
   *count = cuda_count;
-  return foSuccess;
+  return Success;
 }
 
-foError_t foGetDevice(int* device) {
+Error_t GetDevice(int* device) {
   if (!device) {
-    return foErrorUnknown;
+    return ErrorUnknown;
   }
 
   *device = gCurrentDevice;
-  return foSuccess;
+  return Success;
 }
 
-foError_t foSetDevice(int device) {
+Error_t SetDevice(int device) {
   int count = 0;
-  foGetDeviceCount(&count);
+  GetDeviceCount(&count);
 
   if (device < 0 || device >= count) {
-    return foErrorInvalidDevice;
+    return ErrorInvalidDevice;
   }
 
   cudaError_t err = cudaSetDevice(device);
   if (err != cudaSuccess) {
-    return foErrorUnknown;
+    return ErrorUnknown;
   }
 
   gCurrentDevice = device;
-  return foSuccess;
+  return Success;
 }
 
-foError_t foDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority) {
+Error_t DeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority) {
   cudaError_t err = cudaDeviceGetStreamPriorityRange(leastPriority, greatestPriority);
-  return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+  return (err == cudaSuccess) ? Success : ErrorUnknown;
 }
 
-foError_t foDeviceSynchronize(void) {
+Error_t DeviceSynchronize(void) {
   cudaError_t err = cudaDeviceSynchronize();
-  return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+  return (err == cudaSuccess) ? Success : ErrorUnknown;
 }

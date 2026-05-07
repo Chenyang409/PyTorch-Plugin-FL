@@ -27,7 +27,7 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
   // Required by dist.barrier() and other distributed operations
   bool isAvailable() const override {
     int count = 0;
-    foGetDeviceCount(&count);
+    ::GetDeviceCount(&count);
     return count > 0;
   }
 
@@ -41,9 +41,9 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
 
   bool isPinnedPtr(const void* data) const override {
     // First check flagos's own registry
-    foPointerAttributes fo_attr{};
-    foPointerGetAttributes(&fo_attr, data);
-    if (fo_attr.type == foMemoryTypeHost) {
+    PointerAttributes fo_attr{};
+    ::PointerGetAttributes(&fo_attr, data);
+    if (fo_attr.type == MemoryTypeHost) {
       return true;
     }
 
@@ -106,8 +106,8 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
     // Copy existing data if any
     if (old_nbytes > 0 && storage_impl->data()) {
       size_t copy_size = std::min(old_nbytes, newsize);
-      foMemcpy(new_data.get(), storage_impl->data(),
-               copy_size, foMemcpyDeviceToDevice);
+      ::Memcpy(new_data.get(), storage_impl->data(),
+               copy_size, MemcpyDeviceToDevice);
     }
 
     // Replace storage data

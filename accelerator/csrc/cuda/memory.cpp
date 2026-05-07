@@ -9,7 +9,7 @@
 namespace {
 
 struct Block {
-  foMemoryType type = foMemoryType::foMemoryTypeUnmanaged;
+  MemoryType type = MemoryType::MemoryTypeUnmanaged;
   int device = -1;
   void* pointer = nullptr;
   size_t size = 0;
@@ -22,16 +22,16 @@ class MemoryManager {
     return instance;
   }
 
-  foError_t allocate(void** ptr, size_t size, foMemoryType type) {
+  Error_t allocate(void** ptr, size_t size, MemoryType type) {
     if (!ptr || size == 0)
-      return foErrorUnknown;
+      return ErrorUnknown;
 
     std::lock_guard<std::mutex> lock(m_mutex);
     void* mem = nullptr;
     int current_device = -1;
 
-    if (type == foMemoryType::foMemoryTypeDevice) {
-      foGetDevice(&current_device);
+    if (type == MemoryType::MemoryTypeDevice) {
+      GetDevice(&current_device);
 
       // Ensure CUDA device is set correctly before allocation
       // This is critical in multi-process environments like DDP
@@ -39,119 +39,119 @@ class MemoryManager {
       if (set_err != cudaSuccess) {
         fprintf(stderr, "[flagos] cudaSetDevice(%d) failed: %s\n",
                 current_device, cudaGetErrorString(set_err));
-        return foErrorMemoryAllocation;
+        return ErrorMemoryAllocation;
       }
 
       cudaError_t err = cudaMalloc(&mem, size);
       if (err != cudaSuccess || mem == nullptr) {
         fprintf(stderr, "[flagos] cudaMalloc(%zu bytes) on device %d failed: %s\n",
                 size, current_device, cudaGetErrorString(err));
-        return foErrorMemoryAllocation;
+        return ErrorMemoryAllocation;
       }
     } else {
       cudaError_t err = cudaMallocHost(&mem, size);
       if (err != cudaSuccess || mem == nullptr)
-        return foErrorMemoryAllocation;
+        return ErrorMemoryAllocation;
     }
 
     m_registry[mem] = {type, current_device, mem, size};
     *ptr = mem;
-    return foSuccess;
+    return Success;
   }
 
-  foError_t free(void* ptr) {
+  Error_t free(void* ptr) {
     if (!ptr)
-      return foSuccess;
+      return Success;
 
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_registry.find(ptr);
     if (it == m_registry.end())
-      return foErrorUnknown;
+      return ErrorUnknown;
 
     const auto& info = it->second;
     cudaError_t err;
-    if (info.type == foMemoryType::foMemoryTypeDevice) {
+    if (info.type == MemoryType::MemoryTypeDevice) {
       err = cudaFree(info.pointer);
     } else {
       err = cudaFreeHost(info.pointer);
     }
 
     m_registry.erase(it);
-    return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+    return (err == cudaSuccess) ? Success : ErrorUnknown;
   }
 
-  foError_t memcpy(
+  Error_t memcpy(
       void* dst,
       const void* src,
       size_t count,
-      foMemcpyKind kind) {
+      MemcpyKind kind) {
     if (!dst || !src || count == 0)
-      return foErrorUnknown;
+      return ErrorUnknown;
 
     cudaMemcpyKind cuda_kind;
     switch (kind) {
-      case foMemcpyHostToHost:
+      case MemcpyHostToHost:
         cuda_kind = cudaMemcpyHostToHost;
         break;
-      case foMemcpyHostToDevice:
+      case MemcpyHostToDevice:
         cuda_kind = cudaMemcpyHostToDevice;
         break;
-      case foMemcpyDeviceToHost:
+      case MemcpyDeviceToHost:
         cuda_kind = cudaMemcpyDeviceToHost;
         break;
-      case foMemcpyDeviceToDevice:
+      case MemcpyDeviceToDevice:
         cuda_kind = cudaMemcpyDeviceToDevice;
         break;
       default:
-        return foErrorUnknown;
+        return ErrorUnknown;
     }
 
     cudaError_t err = cudaMemcpy(dst, src, count, cuda_kind);
-    return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+    return (err == cudaSuccess) ? Success : ErrorUnknown;
   }
 
-  foError_t memcpyAsync(
+  Error_t memcpyAsync(
       void* dst,
       const void* src,
       size_t count,
-      foMemcpyKind kind,
-      foStream_t stream) {
+      MemcpyKind kind,
+      Stream_t stream) {
     if (!dst || !src || count == 0)
-      return foErrorUnknown;
+      return ErrorUnknown;
 
     cudaMemcpyKind cuda_kind;
     switch (kind) {
-      case foMemcpyHostToHost:
+      case MemcpyHostToHost:
         cuda_kind = cudaMemcpyHostToHost;
         break;
-      case foMemcpyHostToDevice:
+      case MemcpyHostToDevice:
         cuda_kind = cudaMemcpyHostToDevice;
         break;
-      case foMemcpyDeviceToHost:
+      case MemcpyDeviceToHost:
         cuda_kind = cudaMemcpyDeviceToHost;
         break;
-      case foMemcpyDeviceToDevice:
+      case MemcpyDeviceToDevice:
         cuda_kind = cudaMemcpyDeviceToDevice;
         break;
       default:
-        return foErrorUnknown;
+        return ErrorUnknown;
     }
 
     cudaError_t err = cudaMemcpyAsync(dst, src, count, cuda_kind, (cudaStream_t)stream);
-    return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+    return (err == cudaSuccess) ? Success : ErrorUnknown;
   }
 
-  foError_t getPointerAttributes(
-      foPointerAttributes* attributes,
+  Error_t getPointerAttributes(
+      PointerAttributes* attributes,
       const void* ptr) {
     if (!attributes || !ptr)
-      return foErrorUnknown;
+      return ErrorUnknown;
 
     std::lock_guard<std::mutex> lock(m_mutex);
     Block* info = getBlockInfoNoLock(ptr);
 
     if (!info) {
-      attributes->type = foMemoryType::foMemoryTypeUnmanaged;
+      attributes->type = MemoryType::MemoryTypeUnmanaged;
       attributes->device = -1;
       attributes->pointer = const_cast<void*>(ptr);
     } else {
@@ -160,17 +160,17 @@ class MemoryManager {
       attributes->pointer = info->pointer;
     }
 
-    return foSuccess;
+    return Success;
   }
 
-  foError_t memset(void* devPtr, int value, size_t count) {
+  Error_t memset(void* devPtr, int value, size_t count) {
     cudaError_t err = cudaMemset(devPtr, value, count);
-    return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+    return (err == cudaSuccess) ? Success : ErrorUnknown;
   }
 
-  foError_t memsetAsync(void* devPtr, int value, size_t count, foStream_t stream) {
+  Error_t memsetAsync(void* devPtr, int value, size_t count, Stream_t stream) {
     cudaError_t err = cudaMemsetAsync(devPtr, value, count, (cudaStream_t)stream);
-    return (err == cudaSuccess) ? foSuccess : foErrorUnknown;
+    return (err == cudaSuccess) ? Success : ErrorUnknown;
   }
 
  private:
@@ -196,51 +196,51 @@ class MemoryManager {
 
 } // namespace
 
-foError_t foMalloc(void** devPtr, size_t size) {
+Error_t Malloc(void** devPtr, size_t size) {
   return MemoryManager::getInstance().allocate(
-      devPtr, size, foMemoryType::foMemoryTypeDevice);
+      devPtr, size, MemoryType::MemoryTypeDevice);
 }
 
-foError_t foFree(void* devPtr) {
+Error_t Free(void* devPtr) {
   return MemoryManager::getInstance().free(devPtr);
 }
 
-foError_t foMallocHost(void** hostPtr, size_t size) {
+Error_t MallocHost(void** hostPtr, size_t size) {
   return MemoryManager::getInstance().allocate(
-      hostPtr, size, foMemoryType::foMemoryTypeHost);
+      hostPtr, size, MemoryType::MemoryTypeHost);
 }
 
-foError_t foFreeHost(void* hostPtr) {
+Error_t FreeHost(void* hostPtr) {
   return MemoryManager::getInstance().free(hostPtr);
 }
 
-foError_t foMemcpy(
+Error_t Memcpy(
     void* dst,
     const void* src,
     size_t count,
-    foMemcpyKind kind) {
+    MemcpyKind kind) {
   return MemoryManager::getInstance().memcpy(dst, src, count, kind);
 }
 
-foError_t foMemcpyAsync(
+Error_t MemcpyAsync(
     void* dst,
     const void* src,
     size_t count,
-    foMemcpyKind kind,
-    foStream_t stream) {
+    MemcpyKind kind,
+    Stream_t stream) {
   return MemoryManager::getInstance().memcpyAsync(dst, src, count, kind, stream);
 }
 
-foError_t foPointerGetAttributes(
-    foPointerAttributes* attributes,
+Error_t PointerGetAttributes(
+    PointerAttributes* attributes,
     const void* ptr) {
   return MemoryManager::getInstance().getPointerAttributes(attributes, ptr);
 }
 
-foError_t foMemset(void* devPtr, int value, size_t count) {
+Error_t Memset(void* devPtr, int value, size_t count) {
   return MemoryManager::getInstance().memset(devPtr, value, count);
 }
 
-foError_t foMemsetAsync(void* devPtr, int value, size_t count, foStream_t stream) {
+Error_t MemsetAsync(void* devPtr, int value, size_t count, Stream_t stream) {
   return MemoryManager::getInstance().memsetAsync(devPtr, value, count, stream);
 }

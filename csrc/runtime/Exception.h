@@ -12,8 +12,8 @@
 
 #define FLAGOS_CHECK(EXPR)                                      \
   do {                                                          \
-    const foError_t __err = EXPR;                               \
-    TORCH_CHECK(__err == foSuccess,                             \
+    const Error_t __err = EXPR;                               \
+    TORCH_CHECK(__err == Success,                             \
         "FlagOS error: ", __err,                                \
         " when calling " #EXPR);                                \
   } while (0)

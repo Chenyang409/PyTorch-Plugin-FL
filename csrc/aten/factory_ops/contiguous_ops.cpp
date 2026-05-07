@@ -27,7 +27,7 @@ at::Tensor contiguous(
       at::Tensor storage_cpu = at::empty(
           {static_cast<int64_t>(storage_size)},
           at::TensorOptions().dtype(at::kByte).device(at::kCPU));
-      foMemcpy(storage_cpu.data_ptr(), self.storage().data(), storage_size, foMemcpyDeviceToHost);
+      Memcpy(storage_cpu.data_ptr(), self.storage().data(), storage_size, MemcpyDeviceToHost);
 
       at::Tensor cpu_view = at::empty({0}, self.options().device(at::kCPU));
       cpu_view.set_(
@@ -61,7 +61,7 @@ at::Tensor contiguous(
       }
 
       size_t nbytes = cpu_contig.numel() * cpu_contig.element_size();
-      foMemcpy(result.data_ptr(), cpu_contig.data_ptr(), nbytes, foMemcpyHostToDevice);
+      Memcpy(result.data_ptr(), cpu_contig.data_ptr(), nbytes, MemcpyHostToDevice);
     }
 
     return result;
@@ -81,7 +81,7 @@ at::Tensor clone(
       auto result = at::empty_like(self);
       size_t nbytes = self.numel() * self.element_size();
       if (nbytes > 0 && self.is_privateuseone()) {
-        foMemcpy(result.data_ptr(), self.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+        Memcpy(result.data_ptr(), self.data_ptr(), nbytes, MemcpyDeviceToDevice);
       } else if (nbytes > 0) {
         result.copy_(self);
       }

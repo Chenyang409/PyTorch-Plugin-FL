@@ -24,15 +24,15 @@ at::Tensor _copy_from(
   size_t nbytes = self_contig.numel() * self_contig.element_size();
 
   if (self.is_privateuseone() && dst.is_privateuseone()) {
-    foMemcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
   } else if (self.is_cpu() && dst.is_privateuseone()) {
-    foMemcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyHostToDevice);
+    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyHostToDevice);
   } else if (self.is_privateuseone() && dst.is_cpu()) {
-    foMemcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToHost);
+    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
   } else if (self.is_privateuseone() && dst.is_cuda()) {
-    foMemcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
   } else if (self.is_cuda() && dst.is_privateuseone()) {
-    foMemcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
   } else {
     TORCH_CHECK(false, "Unsupported device combination for copy: ", self.device(), " -> ", dst.device());
   }
@@ -54,7 +54,7 @@ at::Tensor _copy_from_and_resize(
 at::Scalar _local_scalar_dense(const at::Tensor& self) {
   TORCH_CHECK(self.numel() == 1, "_local_scalar_dense expects a tensor with 1 element");
   at::Tensor cpu_tensor = at::empty({1}, self.options().device(at::kCPU));
-  foMemcpy(cpu_tensor.data_ptr(), self.data_ptr(), self.element_size(), foMemcpyDeviceToHost);
+  Memcpy(cpu_tensor.data_ptr(), self.data_ptr(), self.element_size(), MemcpyDeviceToHost);
   return cpu_tensor.item();
 }
 
@@ -91,7 +91,7 @@ at::Tensor _to_copy(
     at::Tensor temp = at::empty(self_contig.sizes(), self_contig.options().device(c10::Device(c10::kCUDA, device_index)));
     size_t nbytes = self_contig.numel() * self_contig.element_size();
     if (nbytes > 0) {
-      foMemcpy(temp.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+      Memcpy(temp.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
     }
     result = (dtype != self.scalar_type()) ? temp.to(dtype) : temp;
   } else if (src_is_flagos && dst_is_flagos) {
@@ -101,19 +101,19 @@ at::Tensor _to_copy(
       size_t nbytes = self_contig.numel() * self_contig.element_size();
       at::Tensor cpu_tensor = at::empty(self_contig.sizes(), self_contig.options().device(at::kCPU));
       if (nbytes > 0) {
-        foMemcpy(cpu_tensor.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToHost);
+        Memcpy(cpu_tensor.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
       }
       cpu_tensor = cpu_tensor.to(dtype);
       result = at::empty(cpu_tensor.sizes(), cpu_tensor.options().device(c10::Device(c10::kPrivateUse1, device_index)));
       size_t result_nbytes = cpu_tensor.numel() * cpu_tensor.element_size();
       if (result_nbytes > 0) {
-        foMemcpy(result.data_ptr(), cpu_tensor.data_ptr(), result_nbytes, foMemcpyHostToDevice);
+        Memcpy(result.data_ptr(), cpu_tensor.data_ptr(), result_nbytes, MemcpyHostToDevice);
       }
     } else {
       result = at::empty(self_contig.sizes(), self_contig.options().device(c10::Device(c10::kPrivateUse1, device_index)));
       size_t nbytes = self_contig.numel() * self_contig.element_size();
       if (nbytes > 0) {
-        foMemcpy(result.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+        Memcpy(result.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
       }
     }
   } else if (src_is_flagos && dst_is_cpu) {
@@ -121,7 +121,7 @@ at::Tensor _to_copy(
     at::Tensor temp = at::empty(self_contig.sizes(), self_contig.options().device(at::kCPU));
     size_t nbytes = self_contig.numel() * self_contig.element_size();
     if (nbytes > 0) {
-      foMemcpy(temp.data_ptr(), self_contig.data_ptr(), nbytes, foMemcpyDeviceToHost);
+      Memcpy(temp.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
     }
     result = (dtype != self.scalar_type()) ? temp.to(dtype) : temp;
   } else if (!src_is_flagos && dst_is_flagos) {
@@ -134,9 +134,9 @@ at::Tensor _to_copy(
     size_t nbytes = src_contig.numel() * src_contig.element_size();
     if (nbytes > 0) {
       if (self.is_cpu()) {
-        foMemcpy(result.data_ptr(), src_contig.data_ptr(), nbytes, foMemcpyHostToDevice);
+        Memcpy(result.data_ptr(), src_contig.data_ptr(), nbytes, MemcpyHostToDevice);
       } else if (self.is_cuda()) {
-        foMemcpy(result.data_ptr(), src_contig.data_ptr(), nbytes, foMemcpyDeviceToDevice);
+        Memcpy(result.data_ptr(), src_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
       } else {
         TORCH_CHECK(false, "_to_copy: unsupported source device ", self.device());
       }
@@ -148,7 +148,7 @@ at::Tensor _to_copy(
       result = at::empty(cpu_tensor.sizes(), cpu_tensor.options().device(c10::Device(c10::kPrivateUse1, device_index)));
       size_t nbytes = cpu_tensor.numel() * cpu_tensor.element_size();
       if (nbytes > 0) {
-        foMemcpy(result.data_ptr(), cpu_tensor.data_ptr(), nbytes, foMemcpyHostToDevice);
+        Memcpy(result.data_ptr(), cpu_tensor.data_ptr(), nbytes, MemcpyHostToDevice);
       }
     } else {
       result = cpu_tensor.to(device);

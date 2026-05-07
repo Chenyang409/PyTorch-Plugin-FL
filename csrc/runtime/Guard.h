@@ -33,26 +33,26 @@ struct GuardImpl final : public c10::impl::DeviceGuardImplInterface {
 
   c10::DeviceIndex exchangeDeviceIndex(c10::DeviceIndex device_index) const {
     int prev_device = -1;
-    foGetDevice(&prev_device);
+    ::GetDevice(&prev_device);
     if (prev_device != device_index) {
-      foSetDevice(device_index);
+      ::SetDevice(device_index);
     }
     return static_cast<c10::DeviceIndex>(prev_device);
   }
 
   c10::Device getDevice() const override {
     int device = -1;
-    foGetDevice(&device);
+    ::GetDevice(&device);
     return c10::Device(c10::DeviceType::PrivateUse1, static_cast<c10::DeviceIndex>(device));
   }
 
   void setDevice(c10::Device d) const override {
     TORCH_INTERNAL_ASSERT(d.is_privateuseone());
-    foSetDevice(d.index());
+    ::SetDevice(d.index());
   }
 
   void uncheckedSetDevice(c10::Device d) const noexcept override {
-    foSetDevice(d.index());
+    ::SetDevice(d.index());
   }
 
   c10::Stream getStream(c10::Device d) const noexcept override {
@@ -79,17 +79,17 @@ struct GuardImpl final : public c10::impl::DeviceGuardImplInterface {
 
   bool queryStream(const c10::Stream& stream) const override {
     // Synchronize CUDA to ensure all operations are complete
-    foDeviceSynchronize();
+    ::DeviceSynchronize();
     return true;
   }
 
   void synchronizeStream(const c10::Stream& stream) const override {
-    foDeviceSynchronize();
+    ::DeviceSynchronize();
   }
 
   void synchronizeEvent(void* event) const override {
     if (event) {
-      foEventSynchronize((foEvent_t)event);
+      ::EventSynchronize((Event_t)event);
     }
   }
 
@@ -105,14 +105,14 @@ struct GuardImpl final : public c10::impl::DeviceGuardImplInterface {
       const c10::DeviceIndex device_index) const override {
     float ms = 0.0f;
     if (event1 && event2) {
-      foEventElapsedTime(&ms, (foEvent_t)event1, (foEvent_t)event2);
+      ::EventElapsedTime(&ms, (Event_t)event1, (Event_t)event2);
     }
     return static_cast<double>(ms);
   }
 
   c10::DeviceIndex deviceCount() const noexcept override {
     int count = 0;
-    foGetDeviceCount(&count);
+    ::GetDeviceCount(&count);
     return static_cast<c10::DeviceIndex>(count);
   }
 
@@ -121,21 +121,21 @@ struct GuardImpl final : public c10::impl::DeviceGuardImplInterface {
       const c10::Stream& stream,
       const c10::DeviceIndex device_index,
       const c10::EventFlag flag) const override {
-    foEventCreate((foEvent_t*)event);
-    foEventRecord(*(foEvent_t*)event, nullptr);
+    ::EventCreate((Event_t*)event);
+    ::EventRecord(*(Event_t*)event, nullptr);
   }
 
   void block(void* event, const c10::Stream& stream) const override {
-    foStreamWaitEvent(nullptr, (foEvent_t)event, 0);
+    ::StreamWaitEvent(nullptr, (Event_t)event, 0);
   }
 
   bool queryEvent(void* event) const override {
-    return foEventQuery((foEvent_t)event) == foSuccess;
+    return ::EventQuery((Event_t)event) == Success;
   }
 
   void destroyEvent(void* event, const c10::DeviceIndex device_index)
       const noexcept override {
-    foEventDestroy((foEvent_t)event);
+    ::EventDestroy((Event_t)event);
   }
 };
 

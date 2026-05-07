@@ -18,14 +18,14 @@ struct HostAllocator final : c10::Allocator {
 
   static void ReportAndDelete(void* ptr) {
     if (ptr) {
-      foFreeHost(ptr);
+      ::FreeHost(ptr);
     }
   }
 
   c10::DataPtr allocate(size_t size) override {
     void* ptr = nullptr;
     if (size > 0) {
-      foMallocHost(&ptr, size);
+      ::MallocHost(&ptr, size);
     }
     return {ptr, ptr, &ReportAndDelete, c10::DeviceType::CPU};
   }
@@ -35,7 +35,7 @@ struct HostAllocator final : c10::Allocator {
   }
 
   void copy_data(void* dest, const void* src, std::size_t count) const override {
-    foMemcpy(dest, src, count, foMemcpyHostToHost);
+    ::Memcpy(dest, src, count, MemcpyHostToHost);
   }
 };
 
