@@ -113,6 +113,11 @@ _EXCLUDED_OPS = {
     "bmm.out",
     "cat",
     "embedding",
+    "add.Tensor",
+    "mul.Tensor",
+    "silu",
+    "rsqrt",
+    "mean.dim",
 }
 
 

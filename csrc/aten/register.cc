@@ -14,6 +14,11 @@
 #include "functional_ops/bmm.h"
 #include "functional_ops/cat_stub.h"
 #include "functional_ops/embedding_stub.h"
+#include "functional_ops/add_stub.h"
+#include "functional_ops/mul_stub.h"
+#include "functional_ops/silu_stub.h"
+#include "functional_ops/rsqrt_stub.h"
+#include "functional_ops/mean_stub.h"
 
 #include <ATen/native/CPUFallback.h>
 
@@ -184,6 +189,30 @@ at::Tensor WrapperEmbedding(
       weight, indices, padding_idx.expect_int(), scale_grad_by_freq, sparse);
 }
 
+at::Tensor WrapperAddTensor(
+    const at::Tensor& self, const at::Tensor& other, const at::Scalar& alpha) {
+  return at::native::flagos::add_tensor_stub(self, other, alpha);
+}
+
+at::Tensor WrapperMulTensor(
+    const at::Tensor& self, const at::Tensor& other) {
+  return at::native::flagos::mul_tensor_stub(self, other);
+}
+
+at::Tensor WrapperSilu(const at::Tensor& self) {
+  return at::native::flagos::silu_stub(self);
+}
+
+at::Tensor WrapperRsqrt(const at::Tensor& self) {
+  return at::native::flagos::rsqrt_stub(self);
+}
+
+at::Tensor WrapperMeanDim(
+    const at::Tensor& self, at::OptionalIntArrayRef dim,
+    bool keepdim, std::optional<at::ScalarType> dtype) {
+  return at::native::flagos::mean_dim_stub(self, dim, keepdim, dtype);
+}
+
 } // namespace
 
 // Register basic operators for PrivateUse1 dispatch key
@@ -212,6 +241,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("bmm.out", WrapperBmmOut);
   m.impl("cat", WrapperCat);
   m.impl("embedding", WrapperEmbedding);
+  m.impl("add.Tensor", WrapperAddTensor);
+  m.impl("mul.Tensor", WrapperMulTensor);
+  m.impl("silu", WrapperSilu);
+  m.impl("rsqrt", WrapperRsqrt);
+  m.impl("mean.dim", WrapperMeanDim);
 }
 
 // Register fallback for all unimplemented operators

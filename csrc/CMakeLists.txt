@@ -2,6 +2,7 @@ set(LIBRARY_NAME torch_fl)
 
 file(GLOB_RECURSE SOURCE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cu"
 )
 
 add_library(${LIBRARY_NAME} SHARED ${SOURCE_FILES})
