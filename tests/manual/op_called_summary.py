@@ -15,9 +15,9 @@ class AtenOpCollector(TorchDispatchMode):
         return func(*args, **(kwargs or {}))
 
 
-model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
+model = AutoModelForCausalLM.from_pretrained(MODEL_PATH).to("cuda")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-inputs = tokenizer("hello world", return_tensors="pt")
+inputs = tokenizer("hello world", return_tensors="pt").to("cuda")
 
 # Create separate collectors for inference and training
 inference_collector = AtenOpCollector()
