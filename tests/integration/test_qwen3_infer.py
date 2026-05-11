@@ -38,6 +38,8 @@ def ctx(request):
         f"Model device: {next(model.parameters()).device}  "
         f"load time: {time.time() - t0:.2f}s"
     )
+    # default attn: sdpa
+    model.model.layers[0].self_attn.config._attn_implementation = "eager"
 
     text = tokenizer.apply_chat_template(
         [
