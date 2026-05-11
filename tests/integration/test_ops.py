@@ -177,6 +177,39 @@ class TestCopyTransfer:
         assert y.data_ptr() != x.data_ptr()
         assert torch.allclose(x, y)
 
+    def test_to_copy_cpu_to_device_with_dtype(self, device):
+        cpu_t = torch.randn(16, 16)
+        dev_t = cpu_t.to(device=device, dtype=torch.float16)
+        assert dev_t.device.type == device.split(":")[0]
+        assert dev_t.dtype == torch.float16
+        assert torch.allclose(dev_t.cpu().float(), cpu_t, atol=1e-2, rtol=1e-2)
+
+    def test_to_copy_device_to_cpu_with_dtype(self, device):
+        dev_t = torch.randn(16, 16, device=device)
+        cpu_t = dev_t.to(device="cpu", dtype=torch.float64)
+        assert cpu_t.device.type == "cpu"
+        assert cpu_t.dtype == torch.float64
+        assert torch.allclose(cpu_t.float(), dev_t.cpu(), atol=1e-5, rtol=1e-5)
+
+    def test_to_copy_device_to_device_copy(self, device):
+        dev_t = torch.randn(16, 16, device=device)
+        copied = dev_t.to(device=device, copy=True)
+        assert copied.device.type == device.split(":")[0]
+        assert copied.data_ptr() != dev_t.data_ptr()
+        assert torch.allclose(copied.cpu(), dev_t.cpu(), atol=1e-5, rtol=1e-5)
+
+    def test_to_copy_non_contiguous_roundtrip(self, device):
+        cpu_t = torch.randn(8, 16).t()
+        assert not cpu_t.is_contiguous()
+        roundtrip = cpu_t.to(device).cpu()
+        assert torch.allclose(roundtrip, cpu_t, atol=1e-5, rtol=1e-5)
+
+    def test_to_copy_empty_tensor(self, device):
+        cpu_t = torch.empty(0, 3)
+        dev_t = cpu_t.to(device)
+        assert dev_t.device.type == device.split(":")[0]
+        assert dev_t.shape == cpu_t.shape
+        assert dev_t.cpu().shape == cpu_t.shape
 
 # ---------------------------------------------------------------------------
 # 7. Indexing and slicing
@@ -266,3 +299,49 @@ class TestAutograd:
 class TestSync:
     def test_synchronize(self, device):
         torch_fl.flagos.synchronize()
+
+
+# ---------------------------------------------------------------------------
+# 12. Scaled dot-product attention
+# ---------------------------------------------------------------------------
+
+
+class TestSDPA:
+    """Covers torch.nn.functional.scaled_dot_product_attention.
+
+    On CUDA, PyTorch dispatches to a flash/efficient kernel. On flagos
+    (PrivateUse1), it dispatches to aten._scaled_dot_product_flash_attention_for_cpu,
+    which we decompose to matmul+softmax in torch_flagos._register_composite_ops.
+    Same high-level call exercises both paths.
+    """
+
+    @staticmethod
+    def _qkv(device, B=2, H=4, S=16, D=32, dtype=torch.float32):
+        q = torch.randn(B, H, S, D, device=device, dtype=dtype)
+        k = torch.randn(B, H, S, D, device=device, dtype=dtype)
+        v = torch.randn(B, H, S, D, device=device, dtype=dtype)
+        return q, k, v
+
+    def test_forward_runs(self, device):
+        q, k, v = self._qkv(device)
+        out = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+        assert out.shape == q.shape
+        assert out.device.type == device.split(":")[0]
+
+    def test_matches_cpu_reference(self, device):
+        q, k, v = self._qkv(device)
+        out = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+
+        q_cpu, k_cpu, v_cpu = q.cpu(), k.cpu(), v.cpu()
+        ref = torch.nn.functional.scaled_dot_product_attention(q_cpu, k_cpu, v_cpu)
+        assert torch.allclose(out.cpu(), ref, atol=1e-4, rtol=1e-4)
+
+    def test_causal(self, device):
+        q, k, v = self._qkv(device)
+        out = torch.nn.functional.scaled_dot_product_attention(
+            q, k, v, is_causal=True
+        )
+        ref = torch.nn.functional.scaled_dot_product_attention(
+            q.cpu(), k.cpu(), v.cpu(), is_causal=True
+        )
+        assert torch.allclose(out.cpu(), ref, atol=1e-4, rtol=1e-4)
