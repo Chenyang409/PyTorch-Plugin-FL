@@ -141,6 +141,11 @@ _EXCLUDED_OPS = {
     "zeros",
     "silu_backward",
     "sum.dim_IntList",
+    "slice_backward",
+    "constant_pad_nd",
+    "embedding_dense_backward",
+    "nll_loss_forward",
+    "nll_loss_backward",
 }
 
 
