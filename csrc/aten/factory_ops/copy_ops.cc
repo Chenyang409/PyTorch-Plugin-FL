@@ -5,9 +5,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "copy_ops.h"
+#include "contiguous_ops.h"
 
 #include <ATen/native/Resize.h>
+#include <ATen/ops/copy_native.h>
 #include <accelerator/include/flagos.h>
+#include "../device_boxing.h"
 
 namespace at::native::flagos {
 
@@ -18,27 +21,37 @@ at::Tensor _copy_from(
   TORCH_CHECK(self.defined(), "Source tensor (self) is not defined.");
   TORCH_CHECK(dst.defined(), "Destination tensor (dst) is not defined.");
 
-  at::Tensor self_contig = self.contiguous();
-  at::Tensor dst_contig = dst.is_contiguous() ? dst : dst.contiguous();
+  // Both flagos tensors: box to CUDA and call at::native::copy_ directly.
+  // After boxing, tensors appear as CUDA so copy_impl's is_supported_device
+  // returns true, using TensorIterator + CUDA copy kernel without re-entering
+  // _copy_from.
+  if (self.is_privateuseone() && dst.is_privateuseone()) {
+    DeviceBoxingGuard guard(self, dst);
+    at::native::copy_(const_cast<at::Tensor&>(dst), self, non_blocking);
+    return dst;
+  }
+
+  // Cross-device copies: ensure contiguous src, then memcpy.
+  at::Tensor self_contig = self.is_contiguous() ? self
+      : (self.is_privateuseone() ? at::native::flagos::contiguous(self, c10::MemoryFormat::Contiguous)
+                                 : self.contiguous());
 
   size_t nbytes = self_contig.numel() * self_contig.element_size();
 
-  if (self.is_privateuseone() && dst.is_privateuseone()) {
-    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
-  } else if (self.is_cpu() && dst.is_privateuseone()) {
-    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyHostToDevice);
+  if (self.is_cpu() && dst.is_privateuseone()) {
+    TORCH_CHECK(dst.is_contiguous(), "_copy_from: non-contiguous dst not supported for cpu->flagos");
+    Memcpy(dst.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyHostToDevice);
   } else if (self.is_privateuseone() && dst.is_cpu()) {
-    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
+    TORCH_CHECK(dst.is_contiguous(), "_copy_from: non-contiguous dst not supported for flagos->cpu");
+    Memcpy(dst.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
   } else if (self.is_privateuseone() && dst.is_cuda()) {
-    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
+    TORCH_CHECK(dst.is_contiguous(), "_copy_from: non-contiguous dst not supported for flagos->cuda");
+    Memcpy(dst.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
   } else if (self.is_cuda() && dst.is_privateuseone()) {
-    Memcpy(dst_contig.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
+    TORCH_CHECK(dst.is_contiguous(), "_copy_from: non-contiguous dst not supported for cuda->flagos");
+    Memcpy(dst.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
   } else {
     TORCH_CHECK(false, "Unsupported device combination for copy: ", self.device(), " -> ", dst.device());
-  }
-
-  if (!dst.is_contiguous()) {
-    dst.copy_(dst_contig);
   }
 
   return dst;
