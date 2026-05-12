@@ -14,7 +14,7 @@
 namespace at::native::flagos {
 
 // Change a tensor's device type in-place (metadata only, no data copy).
-// Modifies both dispatch key set and DataPtr device.
+// Modifies dispatch key set, DataPtr device, and device_opt_.
 inline void SetTensorDevice(const at::Tensor& t, c10::DeviceType type) {
   auto* impl = t.unsafeGetTensorImpl();
   auto idx = impl->device().index();
@@ -22,6 +22,14 @@ inline void SetTensorDevice(const at::Tensor& t, c10::DeviceType type) {
   impl->_change_backend_component_keys(new_device);
   impl->unsafe_storage().unsafeGetStorageImpl()
       ->_mutable_data_ptr_no_checks().unsafe_set_device(new_device);
+  // CRITICAL: Also update device_opt_ so device() returns the new device.
+  // device_opt_ is protected, but we can access it via pointer offset.
+  // TensorImpl layout: device_opt_ is at a known offset from the base.
+  // Safer approach: use reinterpret_cast to access the field directly.
+  struct TensorImplAccessor : public c10::TensorImpl {
+    void set_device_opt(c10::Device d) { this->device_opt_ = d; }
+  };
+  static_cast<TensorImplAccessor*>(impl)->set_device_opt(new_device);
 }
 
 inline void BoxToCuda(const at::Tensor& t) {
