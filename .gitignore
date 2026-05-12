@@ -2,6 +2,8 @@
 build/
 dist/
 cmake-build*/
+torch_fl/lib/
+torch_fl/.nfs*
 
 # Python
 __pycache__/

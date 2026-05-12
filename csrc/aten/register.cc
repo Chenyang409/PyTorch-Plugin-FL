@@ -35,6 +35,10 @@
 #include "functional_ops/zeros_stub.h"
 #include "functional_ops/silu_backward_stub.h"
 #include "functional_ops/sum_stub.h"
+#include "functional_ops/slice_backward_stub.h"
+#include "functional_ops/constant_pad_nd_stub.h"
+#include "functional_ops/embedding_dense_backward_stub.h"
+#include "functional_ops/nll_loss_stub.h"
 
 #include <ATen/native/CPUFallback.h>
 
@@ -318,6 +322,38 @@ at::Tensor WrapperSumDimIntList(
   return at::native::flagos::sum_dim_stub(self, dim, keepdim, dtype);
 }
 
+at::Tensor WrapperSliceBackward(
+    const at::Tensor& grad_output, at::IntArrayRef input_sizes,
+    int64_t dim, int64_t start, int64_t end, int64_t step) {
+  return at::native::flagos::slice_backward_stub(grad_output, input_sizes, dim, start, end, step);
+}
+
+at::Tensor WrapperConstantPadNd(
+    const at::Tensor& self, at::IntArrayRef pad, const at::Scalar& value) {
+  return at::native::flagos::constant_pad_nd_stub(self, pad, value);
+}
+
+at::Tensor WrapperEmbeddingDenseBackward(
+    const at::Tensor& grad_output, const at::Tensor& indices,
+    int64_t num_weights, int64_t padding_idx, bool scale_grad_by_freq) {
+  return at::native::flagos::embedding_dense_backward_stub(
+      grad_output, indices, num_weights, padding_idx, scale_grad_by_freq);
+}
+
+std::tuple<at::Tensor, at::Tensor> WrapperNllLossForward(
+    const at::Tensor& self, const at::Tensor& target,
+    const std::optional<at::Tensor>& weight, int64_t reduction, int64_t ignore_index) {
+  return at::native::flagos::nll_loss_forward_stub(self, target, weight, reduction, ignore_index);
+}
+
+at::Tensor WrapperNllLossBackward(
+    const at::Tensor& grad_output, const at::Tensor& self, const at::Tensor& target,
+    const std::optional<at::Tensor>& weight, int64_t reduction,
+    int64_t ignore_index, const at::Tensor& total_weight) {
+  return at::native::flagos::nll_loss_backward_stub(
+      grad_output, self, target, weight, reduction, ignore_index, total_weight);
+}
+
 } // namespace
 
 // Register basic operators for PrivateUse1 dispatch key
@@ -367,6 +403,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("zeros", WrapperZeros);
   m.impl("silu_backward", WrapperSiluBackward);
   m.impl("sum.dim_IntList", WrapperSumDimIntList);
+  m.impl("slice_backward", WrapperSliceBackward);
+  m.impl("constant_pad_nd", WrapperConstantPadNd);
+  m.impl("embedding_dense_backward", WrapperEmbeddingDenseBackward);
+  m.impl("nll_loss_forward", WrapperNllLossForward);
+  m.impl("nll_loss_backward", WrapperNllLossBackward);
 }
 
 // Register fallback for all unimplemented operators
