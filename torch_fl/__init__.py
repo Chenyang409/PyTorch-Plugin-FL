@@ -268,7 +268,6 @@ def _register_composite_ops():
     lib.impl("_log_softmax", log_softmax_impl, "PrivateUse1")
     lib.impl("_log_softmax_backward_data", log_softmax_backward_impl, "PrivateUse1")
 
-
     return lib  # prevent GC
 
 

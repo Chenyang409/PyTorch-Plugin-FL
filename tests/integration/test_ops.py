@@ -299,4 +299,3 @@ class TestAutograd:
 class TestSync:
     def test_synchronize(self, device):
         torch_fl.flagos.synchronize()
-
