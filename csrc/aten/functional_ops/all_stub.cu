@@ -26,18 +26,12 @@ at::Tensor AllKernelCuda(const at::Tensor& self) {
 
   auto iter = at::TensorIterator::reduce_op(result, self.to(at::kBool));
 
-  AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND3(
-    at::ScalarType::Half, at::ScalarType::BFloat16, at::ScalarType::Bool,
-    self.scalar_type(), "all_cuda",
-    [&]() {
-      at::native::gpu_reduce_kernel<scalar_t, bool>(
-          iter,
-          func_wrapper<bool>([] GPU_LAMBDA(bool acc, scalar_t val) -> bool {
-            return acc && static_cast<bool>(val);
-          }),
-          true);
-    }
-  );
+  at::native::gpu_reduce_kernel<bool, bool>(
+      iter,
+      func_wrapper<bool>([] GPU_LAMBDA(bool acc, bool val) -> bool {
+        return acc && val;
+      }),
+      true);
 
   return result;
 }

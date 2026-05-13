@@ -98,6 +98,7 @@ def ctx(request):
         "device": device,
         "steps": steps,
         "batch_size": batch_size,
+        "seq_len": seq_len,
     }
 
 
@@ -157,7 +158,7 @@ class TestQwen3Training:
         avg_loss = sum(losses) / len(losses)
         avg_time = sum(step_times) / len(step_times)
         total_tokens = (
-            ctx["batch_size"] * 1024 * len(step_times)
+            ctx["batch_size"] * ctx["seq_len"] * len(step_times)
         )
         print(
             f"\n  Steps 2-{ctx['steps']}: "

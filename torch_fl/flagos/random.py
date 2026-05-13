@@ -7,7 +7,7 @@
 
 import torch
 
-import torch_fl._C  # type: ignore[misc]
+from .. import _C  # type: ignore[import-untyped]
 
 from . import _lazy_init, current_device, device_count
 
@@ -29,7 +29,7 @@ def get_rng_state(device="flagos"):
     idx = device.index
     if idx is None:
         idx = current_device()
-    default_generator = torch_fl._C._get_default_generator(idx)
+    default_generator = _C._get_default_generator(idx)
     return default_generator.get_state()
 
 
@@ -41,14 +41,14 @@ def set_rng_state(new_state, device="flagos"):
     idx = device.index
     if idx is None:
         idx = current_device()
-    default_generator = torch_fl._C._get_default_generator(idx)
+    default_generator = _C._get_default_generator(idx)
     default_generator.set_state(new_state)
 
 
 def initial_seed() -> int:
     _lazy_init()
     idx = current_device()
-    default_generator = torch_fl._C._get_default_generator(idx)
+    default_generator = _C._get_default_generator(idx)
     return default_generator.initial_seed()
 
 
@@ -56,7 +56,7 @@ def manual_seed(seed: int) -> None:
     seed = int(seed)
 
     idx = current_device()
-    default_generator = torch_fl._C._get_default_generator(idx)
+    default_generator = _C._get_default_generator(idx)
     default_generator.manual_seed(seed)
 
 
@@ -64,5 +64,5 @@ def manual_seed_all(seed: int) -> None:
     seed = int(seed)
 
     for idx in range(device_count()):
-        default_generator = torch_fl._C._get_default_generator(idx)
+        default_generator = _C._get_default_generator(idx)
         default_generator.manual_seed(seed)

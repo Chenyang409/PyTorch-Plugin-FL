@@ -2,10 +2,12 @@
 
 #include <cstddef>
 
+#ifndef FLAGOS_EXPORT
 #ifdef _WIN32
 #define FLAGOS_EXPORT __declspec(dllexport)
 #else
 #define FLAGOS_EXPORT __attribute__((visibility("default")))
+#endif
 #endif
 
 #ifdef __cplusplus

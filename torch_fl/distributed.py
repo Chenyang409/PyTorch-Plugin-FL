@@ -242,7 +242,7 @@ def move_buffers_to_device(module, device):
         device: Target device (e.g. ``"flagos:0"``).
     """
     for name, buf in module._buffers.items():
-        if buf is not None and buf.device.type != "privateuseone":
+        if buf is not None and buf.device.type not in ("privateuseone", "flagos"):
             module._buffers[name] = buf.to(device)
     for child in module.children():
         move_buffers_to_device(child, device)

@@ -44,6 +44,9 @@ def register_flagos_operator(
     lib = torch.library.Library("aten", "IMPL")
     lib.impl(op_name, impl_func, "PrivateUse1")
     _registered_ops.add(op_name)
+    if not hasattr(register_flagos_operator, "_libs"):
+        register_flagos_operator._libs = []
+    register_flagos_operator._libs.append(lib)
 
 
 def enable_flaggems_for_flagos(

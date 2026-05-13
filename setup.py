@@ -204,6 +204,7 @@ def main():
             "lib/*.dylib*",
             "lib/*.dll",
             "lib/*.lib",
+            "backends.conf",
         ]
     }
 
@@ -222,7 +223,7 @@ def main():
         include_package_data=False,
         python_requires=">=3.8",
         install_requires=[
-            "torch>=2.0",
+            "torch",
         ],
     )
 

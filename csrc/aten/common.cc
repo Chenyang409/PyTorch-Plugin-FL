@@ -10,16 +10,34 @@
 #include <string>
 #include <unordered_map>
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 namespace at::native::flagos {
 
 namespace {
 
 std::string DefaultConfigPath() {
-  // Resolve relative to this shared library's location at runtime would require
-  // dladdr; instead use the source-tree convention: the config lives at
-  // <package_root>/torch_fl/backends.conf, where package_root is two directories
-  // above this file's build output.  Users can always override via
-  // FLAGOS_BACKEND_CONFIG.
+#ifndef _WIN32
+  Dl_info info;
+  if (dladdr(reinterpret_cast<void*>(GetBackendForOp), &info) && info.dli_fname) {
+    std::string lib_path(info.dli_fname);
+    auto pos = lib_path.rfind('/');
+    if (pos != std::string::npos) {
+      std::string dir = lib_path.substr(0, pos);
+      // Try package-relative: <dir>/../torch_fl/backends.conf
+      std::string candidate = dir + "/../torch_fl/backends.conf";
+      std::ifstream test(candidate);
+      if (test.is_open()) return candidate;
+      // Try: <dir>/backends.conf
+      candidate = dir + "/backends.conf";
+      test.open(candidate);
+      if (test.is_open()) return candidate;
+    }
+  }
+#endif
+  // Fallback to build-time path
   return FLAGOS_SOURCE_ROOT "/torch_fl/backends.conf";
 }
 

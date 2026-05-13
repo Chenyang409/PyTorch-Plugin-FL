@@ -1,6 +1,6 @@
 import torch
 
-import torch_fl._C  # type: ignore[misc]
+from .. import _C  # type: ignore[misc]
 
 from . import meta  # noqa: F401
 
@@ -21,27 +21,27 @@ class device:
         self.prev_idx = -1
 
     def __enter__(self):
-        self.prev_idx = torch_fl._C._exchangeDevice(self.idx)
+        self.prev_idx = _C._exchangeDevice(self.idx)
 
     def __exit__(self, type, value, traceback):
-        self.idx = torch_fl._C._set_device(self.prev_idx)
+        _C._set_device(self.prev_idx)
         return False
 
 
 def is_available():
-    return torch_fl._C._get_device_count() > 0
+    return _C._get_device_count() > 0
 
 
 def device_count() -> int:
-    return torch_fl._C._get_device_count()
+    return _C._get_device_count()
 
 
 def current_device():
-    return torch_fl._C._get_device()
+    return _C._get_device()
 
 
 def set_device(device) -> None:
-    return torch_fl._C._set_device(device)
+    return _C._set_device(device)
 
 
 def synchronize(device=None):
@@ -53,10 +53,14 @@ def synchronize(device=None):
             if :attr:`device` is ``None`` (default).
     """
     if device is not None:
-        with torch_fl.flagos.device(device):
-            torch_fl._C._synchronize()
+        idx = torch.accelerator._get_device_index(device, optional=True)
+        prev_idx = _C._exchangeDevice(idx)
+        try:
+            _C._synchronize()
+        finally:
+            _C._set_device(prev_idx)
     else:
-        torch_fl._C._synchronize()
+        _C._synchronize()
 
 
 def init():
@@ -71,7 +75,7 @@ def _lazy_init():
     global _initialized
     if is_initialized():
         return
-    torch_fl._C._init()
+    _C._init()
     _initialized = True
 
 
@@ -129,7 +133,6 @@ __all__ = [
     "is_available",
     "init",
     "is_initialized",
-    "random",  # noqa: F405
     "manual_seed",  # noqa: F405
     "manual_seed_all",  # noqa: F405
     "get_rng_state",  # noqa: F405

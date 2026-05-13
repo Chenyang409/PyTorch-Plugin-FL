@@ -32,10 +32,9 @@ at::Tensor contiguous(
       at::Tensor cpu_view = at::empty({0}, self.options().device(at::kCPU));
       cpu_view.set_(
           storage_cpu.storage(),
-          self.storage_offset() * self.element_size(),
+          self.storage_offset(),
           self.sizes(),
           self.strides());
-      cpu_view = cpu_view.view(self.scalar_type());
 
       auto cpu_contig = at::empty(self.sizes(), self.options().device(at::kCPU).memory_format(memory_format));
 
