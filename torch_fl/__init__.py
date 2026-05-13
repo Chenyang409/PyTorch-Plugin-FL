@@ -111,6 +111,7 @@ _EXCLUDED_OPS = {
     # log_softmax - FlagGems Triton kernel exceeds MACA's 4KB/thread private memory
     # limit on large vocab (e.g. Qwen3 151k). Use Python decomposition instead.
     "_log_softmax",
+    # _log_softmax_backward_data is handled by C++ DispatchStub.
     "_log_softmax_backward_data",
     # Ops dispatched by C++ stub (DispatchStub) which reads backends.conf
     # at load time to route to flaggems or cuda per-op.
@@ -291,7 +292,7 @@ def _register_composite_ops():
         return grad_input.to(input_dtype)
 
     lib.impl("_log_softmax", log_softmax_impl, "PrivateUse1")
-    lib.impl("_log_softmax_backward_data", log_softmax_backward_impl, "PrivateUse1")
+    # lib.impl("_log_softmax_backward_data", log_softmax_backward_impl, "PrivateUse1")
 
     return lib  # prevent GC
 

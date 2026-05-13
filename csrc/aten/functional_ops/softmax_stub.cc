@@ -4,6 +4,8 @@
 
 #include <ATen/ops/_softmax_meta.h>
 #include <ATen/ops/_softmax_native.h>
+#include <ATen/ops/_log_softmax_backward_data_native.h>
+
 #include <flag_gems/operators.h>
 
 #include "../device_boxing.h"
@@ -11,6 +13,7 @@
 namespace at::native::flagos {
 
 FLAGOS_DEFINE_DISPATCH(SoftmaxFn, softmax_stub, "_softmax")
+FLAGOS_DEFINE_DISPATCH(LogSoftmaxBackwardDataFn, log_softmax_backward_data_stub, "_log_softmax_backward_data")
 
 namespace {
 
@@ -46,9 +49,50 @@ at::Tensor SoftmaxKernelCuda(const at::Tensor& self, int64_t dim, bool half_to_f
   return output;
 }
 
+at::Tensor LogSoftmaxBackwardDataKernelCuda(
+    const at::Tensor& grad_output,
+    const at::Tensor& output,
+    int64_t dim,
+    at::ScalarType input_dtype) {
+  BoxToCuda(grad_output);
+  BoxToCuda(output);
+
+  struct CudaImpl final : public at::native::structured_log_softmax_backward_cuda_out {
+    at::Tensor grad_input_;
+
+    void set_output_raw_strided(
+        int64_t,
+        at::IntArrayRef sizes,
+        at::IntArrayRef strides,
+        at::TensorOptions options,
+        at::DimnameList) override {
+      grad_input_ = strides.empty()
+          ? at::empty(sizes, options)
+          : at::empty_strided(sizes, strides, options);
+    }
+
+    const at::Tensor& maybe_get_output(int64_t) override {
+      return grad_input_;
+    }
+  };
+
+  CudaImpl op;
+  op.meta(grad_output, output, dim, input_dtype);
+  op.impl(grad_output, output, dim, input_dtype, op.grad_input_);
+
+  UnboxToFlagos(grad_output);
+  UnboxToFlagos(output);
+  UnboxToFlagos(op.grad_input_);
+  return op.grad_input_;
+}
+
 } // namespace
 
 FLAGOS_REGISTER_DISPATCH(SoftmaxFn, softmax_stub, FlagosDevice::kFlagOs, SoftmaxKernelFlaggems)
 FLAGOS_REGISTER_DISPATCH(SoftmaxFn, softmax_stub, FlagosDevice::kCuda, SoftmaxKernelCuda)
-
+FLAGOS_REGISTER_DISPATCH(
+    LogSoftmaxBackwardDataFn,
+    log_softmax_backward_data_stub,
+    FlagosDevice::kCuda,
+    LogSoftmaxBackwardDataKernelCuda)
 } // namespace at::native::flagos
