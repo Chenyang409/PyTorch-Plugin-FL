@@ -80,23 +80,97 @@ else()
   set(CUDA_RUNTIME_LIB CUDA::cudart)
 endif()
 
+# PyTorch's Caffe2 cuda.cmake still follows legacy FindCUDA expectations
+# (CUDA_INCLUDE_DIRS / CUDA_TOOLKIT_ROOT_DIR). Conda split layouts only
+# populate CUDAToolkit_*; without this, find_package(Torch) fails with
+# "Could NOT find CUDA (missing: CUDA_INCLUDE_DIRS)".
+if(ACCELERATOR STREQUAL "cuda" AND CUDAToolkit_FOUND)
+  set(CUDA_INCLUDE_DIRS "${CUDAToolkit_INCLUDE_DIRS}" CACHE STRING
+      "CUDA include dirs (compat for PyTorch cuda.cmake)" FORCE)
+  if(CUDAToolkit_ROOT_DIR)
+    set(CUDA_TOOLKIT_ROOT_DIR "${CUDAToolkit_ROOT_DIR}" CACHE PATH
+        "CUDA toolkit root (compat for PyTorch cuda.cmake)" FORCE)
+  else()
+    list(GET CUDAToolkit_INCLUDE_DIRS 0 _torch_cuda_inc0)
+    get_filename_component(CUDA_TOOLKIT_ROOT_DIR "${_torch_cuda_inc0}" DIRECTORY)
+    set(CUDA_TOOLKIT_ROOT_DIR "${CUDA_TOOLKIT_ROOT_DIR}" CACHE PATH
+        "CUDA toolkit root (compat for PyTorch cuda.cmake)" FORCE)
+  endif()
+endif()
+
 find_package(Torch REQUIRED)
 
-# Allow override via env var, otherwise try the installed flag_gems package
-if(NOT FLAGGEMS_DIR)
+# --- FlagGems (C++ operators): directory that contains FlagGemsConfig.cmake
+#     (pip: .../site-packages/flag_gems/lib/cmake/FlagGems;
+#      in-tree: .../FlagGems/build/<preset>/FlagGemsConfig.cmake).
+if(FlagGems_DIR)
+  set(FLAGGEMS_DIR "${FlagGems_DIR}")
+elseif(FLAGGEMS_DIR)
+  # already set (cache / -DFLAGGEMS_DIR)
+elseif(DEFINED ENV{FLAGGEMS_DIR} AND NOT "$ENV{FLAGGEMS_DIR}" STREQUAL "")
   set(FLAGGEMS_DIR "$ENV{FLAGGEMS_DIR}")
 endif()
+
 if(NOT FLAGGEMS_DIR)
-  set(FLAGGEMS_DIR "/root/miniconda3/envs/pytorch/lib/python3.12/site-packages/flag_gems/lib/cmake/FlagGems")
+  file(
+    GLOB _fg_cfg_candidates
+    LIST_DIRECTORIES false
+    "${CMAKE_SOURCE_DIR}/FlagGems/build/*/FlagGemsConfig.cmake"
+    "${CMAKE_SOURCE_DIR}/FlagGems/build/FlagGemsConfig.cmake"
+  )
+  if(_fg_cfg_candidates)
+    list(SORT _fg_cfg_candidates COMPARE NATURAL ORDER DESCENDING)
+    list(GET _fg_cfg_candidates 0 _fg_cfg_file)
+    get_filename_component(FLAGGEMS_DIR "${_fg_cfg_file}" DIRECTORY)
+    message(STATUS "FlagGems_DIR (in-tree build): ${FLAGGEMS_DIR}")
+  endif()
 endif()
-# FlagGemsConfig.cmake calls find_dependency(Torch MODULE), which needs FindTorch.cmake in MODULE_PATH
+
+if(NOT FLAGGEMS_DIR OR NOT EXISTS "${FLAGGEMS_DIR}/FlagGemsConfig.cmake")
+  message(
+    FATAL_ERROR
+      "FlagGems C++ package not found (need FlagGemsConfig.cmake).\n"
+      "  Option A — use the bundled submodule (from repo root):\n"
+      "    cmake -S FlagGems -B FlagGems/build/cpython-313 \\\n"
+      "      -DFLAGGEMS_BUILD_C_EXTENSIONS=ON -DPython_EXECUTABLE=/path/to/your/python\n"
+      "    cmake --build FlagGems/build/cpython-313 -j\n"
+      "  Option B — install the flag_gems wheel and re-run pip, or set:\n"
+      "    export FLAGGEMS_DIR=/path/to/flag_gems/lib/cmake/FlagGems\n"
+      "  Option C — pass -DFlagGems_DIR=... to cmake."
+  )
+endif()
+
+set(FlagGems_DIR "${FLAGGEMS_DIR}" CACHE PATH "Directory containing FlagGemsConfig.cmake" FORCE)
+
+# FlagGemsConfig.cmake calls find_dependency(Torch MODULE); FindTorch.cmake must be on MODULE_PATH
 list(APPEND CMAKE_MODULE_PATH "${FLAGGEMS_DIR}")
 find_package(FlagGems REQUIRED PATHS "${FLAGGEMS_DIR}" NO_DEFAULT_PATH)
 
-# Embed liboperators.so dir into RPATH so it's found at runtime without LD_LIBRARY_PATH
-# FLAGGEMS_DIR is .../flag_gems/lib/cmake/FlagGems; liboperators.so is at .../flag_gems/lib/
-get_filename_component(_flaggems_libdir "${FLAGGEMS_DIR}/../.." ABSOLUTE)
-list(APPEND CMAKE_INSTALL_RPATH "${_flaggems_libdir}")
+# RPATH for liboperators: build tree uses ${FLAGGEMS_DIR}/lib; pip layout uses ${FLAGGEMS_DIR}/../..
+set(_flaggems_libdir "")
+if(EXISTS "${FLAGGEMS_DIR}/lib/liboperators.so")
+  get_filename_component(_flaggems_libdir "${FLAGGEMS_DIR}/lib" REALPATH)
+else()
+  file(GLOB _fg_ops "${FLAGGEMS_DIR}/lib/liboperators.so*")
+  if(_fg_ops)
+    list(GET _fg_ops 0 _fg_op0)
+    get_filename_component(_flaggems_libdir "${_fg_op0}" DIRECTORY)
+  elseif(EXISTS "${FLAGGEMS_DIR}/../lib/liboperators.so")
+    get_filename_component(_flaggems_libdir "${FLAGGEMS_DIR}/../lib" REALPATH)
+  else()
+    file(GLOB _fg_ops2 "${FLAGGEMS_DIR}/../lib/liboperators.so*")
+    if(_fg_ops2)
+      list(GET _fg_ops2 0 _fg_op1)
+      get_filename_component(_flaggems_libdir "${_fg_op1}" DIRECTORY)
+    endif()
+  endif()
+endif()
+if(NOT _flaggems_libdir)
+  get_filename_component(_flaggems_libdir "${FLAGGEMS_DIR}/../.." REALPATH)
+endif()
+if(EXISTS "${_flaggems_libdir}")
+  list(APPEND CMAKE_INSTALL_RPATH "${_flaggems_libdir}")
+endif()
 
 if(DEFINED PYTHON_INCLUDE_DIR)
   include_directories(${PYTHON_INCLUDE_DIR})

@@ -87,27 +87,109 @@ def make_relative_rpath_args(path):
         return ["-Wl,-rpath,$ORIGIN/" + path]
 
 
-def get_pytorch_dir():
-    import torch
+def _subprocess_env_without_pip_build_overlay():
+    """Copy of the process environment with pip's ephemeral overlay removed from PYTHONPATH."""
+    env = os.environ.copy()
+    old_pp = env.pop("PYTHONPATH", None)
+    if old_pp:
+        kept = [
+            p
+            for p in old_pp.split(os.pathsep)
+            if p and "pip-build-env" not in p.replace("\\", "/")
+        ]
+        if kept:
+            env["PYTHONPATH"] = os.pathsep.join(kept)
+    return env
 
-    return os.path.dirname(os.path.realpath(torch.__file__))
+
+def get_pytorch_dir():
+    """Directory of the installed ``torch`` package (contains ``lib/libtorch.so``).
+
+    Pip can prepend a temporary ``pip-build-env-*/overlay/...`` to ``PYTHONPATH`` while
+    building; that tree is removed before ``cmake --build`` runs, so resolving torch
+    there bakes broken absolute paths into the CMake-generated rules. Resolve torch in
+    a subprocess with ephemeral entries stripped from ``PYTHONPATH``.
+    """
+    env = _subprocess_env_without_pip_build_overlay()
+    try:
+        out = subprocess.check_output(
+            [
+                sys.executable,
+                "-c",
+                "import os, torch; print(os.path.dirname(os.path.realpath(torch.__file__)))",
+            ],
+            env=env,
+            text=True,
+        ).strip()
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            "Could not locate PyTorch (import torch failed). "
+            "Install torch in this environment before building torch_fl."
+        ) from e
+    if not out or not os.path.isdir(out):
+        raise RuntimeError(f"Invalid PyTorch directory resolved: {out!r}")
+    return out
+
+
+def get_flaggems_cmake_dir():
+    """Directory containing ``FlagGemsConfig.cmake`` from the ``flag_gems`` wheel, if installed."""
+    env = _subprocess_env_without_pip_build_overlay()
+    probe = r"""
+import importlib.util as u
+import os
+import sys
+
+spec = u.find_spec("flag_gems")
+if spec is None:
+    sys.exit(2)
+locs = getattr(spec, "submodule_search_locations", None)
+if locs:
+    root = locs[0]
+else:
+    root = os.path.dirname(spec.origin or "")
+cfg = os.path.join(root, "lib", "cmake", "FlagGems")
+if not os.path.isfile(os.path.join(cfg, "FlagGemsConfig.cmake")):
+    sys.exit(3)
+sys.stdout.write(cfg)
+"""
+    try:
+        out = subprocess.check_output(
+            [sys.executable, "-c", probe],
+            env=env,
+            text=True,
+        ).strip()
+    except subprocess.CalledProcessError:
+        return None
+    return out if out and os.path.isdir(out) else None
 
 
 def build_deps():
     build_dir = os.path.join(BASE_DIR, "build")
+    cache_path = os.path.join(build_dir, "CMakeCache.txt")
+    if os.path.isfile(cache_path):
+        try:
+            with open(cache_path, encoding="utf-8", errors="ignore") as f:
+                stale = "pip-build-env" in f.read()
+        except OSError:
+            stale = False
+        if stale:
+            shutil.rmtree(build_dir, ignore_errors=True)
     os.makedirs(build_dir, exist_ok=True)
 
+    pytorch_dir = get_pytorch_dir()
     cmake_args = [
         "-DCMAKE_INSTALL_PREFIX="
         + os.path.realpath(os.path.join(BASE_DIR, "torch_fl")),
         "-DPYTHON_INCLUDE_DIR=" + sysconfig.get_paths().get("include"),
-        "-DPYTORCH_INSTALL_DIR=" + get_pytorch_dir(),
+        "-DPYTORCH_INSTALL_DIR=" + pytorch_dir,
     ]
 
     cmake_args.append(f"-DACCELERATOR={ACCELERATOR}")
 
-    # FlagGems C++ library path (optional, enables low-overhead C++ dispatch)
-    flaggems_dir = os.environ.get("FLAGGEMS_DIR")
+    # FlagGems C++ operators: directory containing FlagGemsConfig.cmake (env, pip, or CMake glob)
+    flaggems_dir = os.environ.get("FLAGGEMS_DIR") or os.environ.get("FlagGems_DIR")
+    if not flaggems_dir:
+        flaggems_dir = get_flaggems_cmake_dir()
     if flaggems_dir:
         cmake_args.append(f"-DFlagGems_DIR={flaggems_dir}")
 
