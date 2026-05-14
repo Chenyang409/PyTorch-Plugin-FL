@@ -25,6 +25,7 @@
 #include "functional_ops/pow_stub.h"
 #include "functional_ops/all_stub.h"
 #include "functional_ops/softmax_stub.h"
+#include "functional_ops/log_softmax_stub.h"
 #include "functional_ops/bitwise_and_stub.h"
 #include "functional_ops/le_stub.h"
 #include "functional_ops/where_stub.h"
@@ -257,6 +258,8 @@ at::Tensor WrapperSoftmax(const at::Tensor& self, int64_t dim, bool half_to_floa
   return at::native::flagos::softmax_stub(self, dim, half_to_float);
 }
 
+at::Tensor WrapperLogSoftmax(const at::Tensor& self, int64_t dim, bool half_to_float) {
+  return at::native::flagos::log_softmax_stub(self, dim, half_to_float);
 at::Tensor WrapperLogSoftmaxBackwardData(
     const at::Tensor& grad_output,
     const at::Tensor& output,
@@ -402,6 +405,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("pow.Tensor_Scalar", WrapperPowTensorScalar);
   m.impl("all", WrapperAll);
   m.impl("_softmax", WrapperSoftmax);
+  m.impl("_log_softmax", WrapperLogSoftmax);
   m.impl("_log_softmax_backward_data", WrapperLogSoftmaxBackwardData);
   m.impl("bitwise_and.Tensor", WrapperBitwiseAndTensor);
   m.impl("le.Tensor", WrapperLeTensor);
