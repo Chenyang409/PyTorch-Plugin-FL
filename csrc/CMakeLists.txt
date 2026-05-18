@@ -21,7 +21,11 @@ add_library(${LIBRARY_NAME} SHARED ${SOURCE_FILES})
 target_compile_definitions(${LIBRARY_NAME} PRIVATE
     FLAGOS_SOURCE_ROOT="${CMAKE_SOURCE_DIR}"
 )
-target_link_libraries(${LIBRARY_NAME} PRIVATE torch_cpu_library flagos ${CUDA_RUNTIME_LIB} FlagGems::operators)
+set(_torch_fl_link_libs torch_cpu_library flagos ${CUDA_RUNTIME_LIB})
+if(FLAGGEMS_KERNEL)
+  list(APPEND _torch_fl_link_libs FlagGems::operators)
+endif()
+target_link_libraries(${LIBRARY_NAME} PRIVATE ${_torch_fl_link_libs})
 target_include_directories(${LIBRARY_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS ${LIBRARY_NAME}
