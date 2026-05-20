@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 set(ACCELERATOR "cuda" CACHE STRING "Accelerator platform: cuda or maca")
+option(CUDA_KERNEL "Build CUDA kernel implementations" ON)
+option(FLAGGEMS_KERNEL "Build FlagGems kernel implementations" ON)
+option(MACA_KERNEL "Build MACA kernel implementations" OFF)
 
 if(ACCELERATOR STREQUAL "maca")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MacaEnv.cmake)
+  set(MACA_KERNEL ON CACHE BOOL "Build MACA kernel implementations" FORCE)
+  set(CUDA_KERNEL OFF CACHE BOOL "Build CUDA kernel implementations" FORCE)
+  set(FLAGGEMS_KERNEL OFF CACHE BOOL "Build FlagGems kernel implementations" FORCE)
   project(TORCH_FLAGOS CXX C)
 else()
   project(TORCH_FLAGOS CUDA CXX C)
@@ -14,6 +21,11 @@ include(CheckCXXCompilerFlag)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(NOT ACCELERATOR STREQUAL "maca")
+  set(CMAKE_CUDA_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
@@ -83,11 +95,7 @@ endif()
 find_package(Torch REQUIRED)
 
 if(ACCELERATOR STREQUAL "maca")
-  # mcPytorch headers (Macros.h, Context.h, etc.) require USE_MACA when not building
-  # as ROCm/CUDA-only; otherwise static_assert(0, "Unexpected branch") fires.
-  add_compile_definitions(USE_MACA)
-  set(FLAGGEMS_KERNEL OFF CACHE BOOL "Build FlagGems kernel implementations" FORCE)
-  message(STATUS "MACA build: skipping FlagGems dependency")
+  message(STATUS "MACA build: native runtime + mxcc kernels (no FlagGems)")
 else()
   # Allow override via env var, otherwise try the installed flag_gems package
   if(NOT FLAGGEMS_DIR)
@@ -110,6 +118,10 @@ if(DEFINED PYTHON_INCLUDE_DIR)
   include_directories(${PYTHON_INCLUDE_DIR})
 else()
   message(FATAL_ERROR "Cannot find Python directory")
+endif()
+
+if(PYTORCH_INSTALL_DIR)
+  list(APPEND CMAKE_INSTALL_RPATH "${PYTORCH_INSTALL_DIR}/lib")
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

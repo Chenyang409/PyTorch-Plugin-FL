@@ -24,21 +24,11 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
   HooksInterface() {};
   ~HooksInterface() override = default;
 
-#ifdef USE_MACA
-  // mcPytorch 2.6+ AcceleratorHooksInterface has deviceCount(), not isAvailable().
-  c10::DeviceIndex deviceCount() const override {
-    int count = 0;
-    ::GetDeviceCount(&count);
-    return static_cast<c10::DeviceIndex>(count);
-  }
-#else
-  // Stock PyTorch / CUDA builds: PrivateUse1HooksInterface still exposes isAvailable().
   bool isAvailable() const override {
     int count = 0;
     ::GetDeviceCount(&count);
     return count > 0;
   }
-#endif
 
   bool hasPrimaryContext(c10::DeviceIndex device_index) const override {
     return true;
