@@ -14,8 +14,8 @@ namespace at::native::flagos {
 using BmmFn = void (*)(const at::Tensor&, const at::Tensor&, at::Tensor&);
 FLAGOS_DECLARE_DISPATCH(BmmFn, bmm_stub)
 
-struct StructuredBmmOutFlagos final : public at::meta::structured_bmm {
-  explicit StructuredBmmOutFlagos(at::Tensor& out) : out_(out) {}
+struct StructuredBmmOut final : public at::meta::structured_bmm {
+  explicit StructuredBmmOut(at::Tensor& out) : out_(out) {}
 
   void set_output_strided(
       int64_t output_idx,

@@ -12,7 +12,9 @@
 #include <c10/core/Allocator.h>
 #include <c10/core/Device.h>
 
+#ifndef USE_ASCEND
 #include <cuda_runtime.h>
+#endif
 #include <include/flagos.h>
 
 #include "generator.h"
@@ -46,6 +48,7 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
       return true;
     }
 
+#ifndef USE_ASCEND
     // Fallback: check if it's CUDA pinned memory
     // This is needed because when CUDA is present, PyTorch's pinned memory
     // allocator defaults to CUDA's cudaMallocHost, which won't be in flagos's
@@ -59,6 +62,7 @@ struct HooksInterface : public at::PrivateUse1HooksInterface {
     if (err != cudaSuccess) {
       cudaGetLastError();
     }
+#endif
 
     return false;
   }

@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
-set(ACCELERATOR "cuda" CACHE STRING "Accelerator platform: cuda or maca")
+set(ACCELERATOR "cuda" CACHE STRING "Accelerator platform: cuda, maca, or ascend")
+
+# Kernel build options (can be overridden via -D flags from setup.py)
 option(CUDA_KERNEL "Build CUDA kernel implementations" ON)
 option(FLAGGEMS_KERNEL "Build FlagGems kernel implementations" ON)
 option(MACA_KERNEL "Build MACA kernel implementations" OFF)
+option(ASCEND_KERNEL "Build Ascend kernel implementations" OFF)
 
-if(ACCELERATOR STREQUAL "maca")
+if(ACCELERATOR STREQUAL "ascend")
+  project(TORCH_FLAGOS CXX C)
+elseif(ACCELERATOR STREQUAL "maca")
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MacaEnv.cmake)
   set(MACA_KERNEL ON CACHE BOOL "Build MACA kernel implementations" FORCE)
   set(CUDA_KERNEL OFF CACHE BOOL "Build CUDA kernel implementations" FORCE)
@@ -22,7 +27,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(NOT ACCELERATOR STREQUAL "maca")
+if(NOT ACCELERATOR STREQUAL "maca" AND NOT ACCELERATOR STREQUAL "ascend")
   set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif()
@@ -47,7 +52,33 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 
 set(Torch_DIR ${PYTORCH_INSTALL_DIR}/share/cmake/Torch)
 
-if(ACCELERATOR STREQUAL "maca")
+if(ACCELERATOR STREQUAL "ascend")
+  # Huawei CANN SDK
+  if(NOT ASCEND_HOME)
+    set(ASCEND_HOME "$ENV{ASCEND_HOME}")
+  endif()
+  if(NOT ASCEND_HOME)
+    set(ASCEND_HOME "/usr/local/Ascend/ascend-toolkit/latest")
+  endif()
+  message(STATUS "Huawei CANN SDK path: ${ASCEND_HOME}")
+
+  set(ASCEND_KERNEL ON CACHE BOOL "Build Ascend kernel implementations" FORCE)
+  set(CUDA_KERNEL OFF CACHE BOOL "Build CUDA kernel implementations" FORCE)
+
+  add_library(cuda_runtime_compat INTERFACE IMPORTED)
+  set_target_properties(cuda_runtime_compat PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ASCEND_HOME}/include"
+  )
+  target_link_directories(cuda_runtime_compat INTERFACE "${ASCEND_HOME}/lib64")
+  target_link_libraries(cuda_runtime_compat INTERFACE ascendcl)
+
+  set(CUDA_RUNTIME_LIB cuda_runtime_compat)
+
+  add_library(torch::cudart INTERFACE IMPORTED)
+  if(NOT TARGET CUDA::nvToolsExt)
+    add_library(CUDA::nvToolsExt INTERFACE IMPORTED)
+  endif()
+elseif(ACCELERATOR STREQUAL "maca")
   # Muxi MACA SDK: use cu-bridge headers and runtime_cu library
   if(NOT MACA_PATH)
     set(MACA_PATH "$ENV{MACA_PATH}")
@@ -94,9 +125,7 @@ endif()
 
 find_package(Torch REQUIRED)
 
-if(ACCELERATOR STREQUAL "maca")
-  message(STATUS "MACA build: native runtime + mxcc kernels (no FlagGems)")
-else()
+if(FLAGGEMS_KERNEL)
   # Allow override via env var, otherwise try the installed flag_gems package
   if(NOT FLAGGEMS_DIR)
     set(FLAGGEMS_DIR "$ENV{FLAGGEMS_DIR}")
@@ -112,6 +141,8 @@ else()
   # FLAGGEMS_DIR is .../flag_gems/lib/cmake/FlagGems; liboperators.so is at .../flag_gems/lib/
   get_filename_component(_flaggems_libdir "${FLAGGEMS_DIR}/../.." ABSOLUTE)
   list(APPEND CMAKE_INSTALL_RPATH "${_flaggems_libdir}")
+elseif(ACCELERATOR STREQUAL "maca")
+  message(STATUS "MACA build: native runtime + mxcc kernels (no FlagGems)")
 endif()
 
 if(DEFINED PYTHON_INCLUDE_DIR)

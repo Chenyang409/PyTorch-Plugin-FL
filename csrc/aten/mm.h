@@ -17,8 +17,8 @@ FLAGOS_DECLARE_DISPATCH(MmFn, mm_stub)
 // Structured mm op for PrivateUse1 (flagos) dispatch key.
 // meta() is inherited from at::meta::structured_mm (PyTorch-generated).
 // impl() dispatches to the backend selected by GetBackendForOp().
-struct StructuredMmOutFlagos final : public at::meta::structured_mm {
-  explicit StructuredMmOutFlagos(at::Tensor& out) : out_(out) {}
+struct StructuredMmOut final : public at::meta::structured_mm {
+  explicit StructuredMmOut(at::Tensor& out) : out_(out) {}
 
   void set_output_strided(
       int64_t output_idx,

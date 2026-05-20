@@ -21,13 +21,65 @@ at::Tensor _copy_from(
   TORCH_CHECK(self.defined(), "Source tensor (self) is not defined.");
   TORCH_CHECK(dst.defined(), "Destination tensor (dst) is not defined.");
 
-  // Both flagos tensors: box to CUDA and call at::native::copy_ directly.
-  // After boxing, tensors appear as CUDA so copy_impl's is_supported_device
-  // returns true, using TensorIterator + CUDA copy kernel without re-entering
-  // _copy_from.
+  // Both flagos tensors: copy on-device.
   if (self.is_privateuseone() && dst.is_privateuseone()) {
+#ifdef USE_ASCEND
+    // On Ascend there is no CUDA runtime, so we cannot box to CUDA and use
+    // TensorIterator's CUDA copy kernel.  Instead, for contiguous same-shape
+    // tensors we memcpy directly; otherwise we round-trip through CPU.
+    if (self.is_contiguous() && dst.is_contiguous() &&
+        self.sizes().equals(dst.sizes()) &&
+        self.scalar_type() == dst.scalar_type()) {
+      size_t nbytes = self.numel() * self.element_size();
+      if (nbytes > 0) {
+        Memcpy(dst.data_ptr(), self.data_ptr(), nbytes, MemcpyDeviceToDevice);
+      }
+    } else {
+      at::Tensor self_contig = self.is_contiguous()
+          ? self
+          : at::native::flagos::contiguous(self, c10::MemoryFormat::Contiguous);
+      size_t nbytes = self_contig.numel() * self_contig.element_size();
+      at::Tensor cpu_src = at::empty(self_contig.sizes(), self_contig.options().device(at::kCPU));
+      if (nbytes > 0) {
+        Memcpy(cpu_src.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToHost);
+      }
+      size_t dst_storage_nbytes = dst.storage().nbytes();
+      at::Tensor cpu_dst_storage = at::empty(
+          {static_cast<int64_t>(dst_storage_nbytes)},
+          dst.options().device(at::kCPU).dtype(at::kByte));
+      int64_t dst_storage_offset_bytes =
+          dst.storage_offset() * static_cast<int64_t>(dst.element_size());
+      char* dst_storage_base =
+          static_cast<char*>(dst.data_ptr()) - dst_storage_offset_bytes;
+      if (dst_storage_nbytes > 0) {
+        Memcpy(
+            cpu_dst_storage.data_ptr(),
+            dst_storage_base,
+            dst_storage_nbytes,
+            MemcpyDeviceToHost);
+      }
+
+      at::Tensor cpu_dst = at::empty({0}, dst.options().device(at::kCPU));
+      cpu_dst.set_(
+          cpu_dst_storage.storage(),
+          dst.storage_offset(),
+          dst.sizes(),
+          dst.strides());
+      at::native::copy_(cpu_dst, cpu_src, false);
+      if (dst_storage_nbytes > 0) {
+        Memcpy(
+            dst_storage_base,
+            cpu_dst_storage.data_ptr(),
+            dst_storage_nbytes,
+            MemcpyHostToDevice);
+      }
+    }
+#else
+    // On platforms with CUDA runtime (NVIDIA/MACA), box to CUDA and use
+    // TensorIterator + CUDA copy kernel without re-entering _copy_from.
     DeviceBoxingGuard guard(self, dst);
     at::native::copy_(const_cast<at::Tensor&>(dst), self, non_blocking);
+#endif
     return dst;
   }
 
@@ -46,8 +98,12 @@ at::Tensor _copy_from(
     } else {
       auto tmp = at::empty(self_contig.sizes(), dst.options());
       Memcpy(tmp.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyHostToDevice);
+#ifdef USE_ASCEND
+      at::native::flagos::_copy_from(tmp, dst, false);
+#else
       DeviceBoxingGuard guard(tmp, dst);
       at::native::copy_(const_cast<at::Tensor&>(dst), tmp, false);
+#endif
     }
   } else if (self.is_privateuseone() && dst.is_cpu()) {
     if (dst.is_contiguous()) {
@@ -71,8 +127,12 @@ at::Tensor _copy_from(
     } else {
       auto tmp = at::empty(self_contig.sizes(), dst.options());
       Memcpy(tmp.data_ptr(), self_contig.data_ptr(), nbytes, MemcpyDeviceToDevice);
+#ifdef USE_ASCEND
+      at::native::flagos::_copy_from(tmp, dst, false);
+#else
       DeviceBoxingGuard guard(tmp, dst);
       at::native::copy_(const_cast<at::Tensor&>(dst), tmp, false);
+#endif
     }
   } else {
     TORCH_CHECK(false, "Unsupported device combination for copy: ", self.device(), " -> ", dst.device());
