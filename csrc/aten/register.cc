@@ -11,6 +11,10 @@
 #include "contiguous_ops.h"
 #include "fallback.h"
 #include "mm.h"
+
+// Ascend development: only register implemented ops above.
+// Unregistered ops fall through to WrapperCpuFallback automatically.
+#ifndef USE_ASCEND
 #include "bmm.h"
 #include "cat.h"
 #include "embedding.h"
@@ -39,6 +43,7 @@
 #include "constant_pad_nd.h"
 #include "embedding_dense_backward.h"
 #include "nll_loss.h"
+#endif // USE_ASCEND
 
 #include <ATen/native/CPUFallback.h>
 
@@ -170,29 +175,30 @@ void WrapperRecordStream(at::Tensor& self, at::Stream s) {
 
 at::Tensor WrapperMm(const at::Tensor& self, const at::Tensor& mat2) {
   auto out = at::empty({self.size(0), mat2.size(1)}, self.options());
-  at::native::flagos::StructuredMmOutFlagos op(out);
+  at::native::flagos::StructuredMmOut op(out);
   op.meta(self, mat2);
   op.impl(self, mat2, "mm");
   return out;
 }
 
 at::Tensor& WrapperMmOut(const at::Tensor& self, const at::Tensor& mat2, at::Tensor& out) {
-  at::native::flagos::StructuredMmOutFlagos op(out);
+  at::native::flagos::StructuredMmOut op(out);
   op.meta(self, mat2);
   op.impl(self, mat2, "mm.out");
   return out;
 }
 
+#ifndef USE_ASCEND
 at::Tensor WrapperBmm(const at::Tensor& self, const at::Tensor& mat2) {
   auto out = at::empty({self.size(0), self.size(1), mat2.size(2)}, self.options());
-  at::native::flagos::StructuredBmmOutFlagos op(out);
+  at::native::flagos::StructuredBmmOut op(out);
   op.meta(self, mat2);
   op.impl(self, mat2, "bmm");
   return out;
 }
 
 at::Tensor& WrapperBmmOut(const at::Tensor& self, const at::Tensor& mat2, at::Tensor& out) {
-  at::native::flagos::StructuredBmmOutFlagos op(out);
+  at::native::flagos::StructuredBmmOut op(out);
   op.meta(self, mat2);
   op.impl(self, mat2, "bmm.out");
   return out;
@@ -353,6 +359,7 @@ at::Tensor WrapperNllLossBackward(
   return at::native::flagos::nll_loss_backward_stub(
       grad_output, self, target, weight, reduction, ignore_index, total_weight);
 }
+#endif // USE_ASCEND
 
 } // namespace
 
@@ -378,6 +385,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("record_stream", WrapperRecordStream);
   m.impl("mm", WrapperMm);
   m.impl("mm.out", WrapperMmOut);
+#ifndef USE_ASCEND
   m.impl("bmm", WrapperBmm);
   m.impl("bmm.out", WrapperBmmOut);
   m.impl("cat", WrapperCat);
@@ -408,6 +416,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("embedding_dense_backward", WrapperEmbeddingDenseBackward);
   m.impl("nll_loss_forward", WrapperNllLossForward);
   m.impl("nll_loss_backward", WrapperNllLossBackward);
+#endif // USE_ASCEND
 }
 
 // Register fallback for all unimplemented operators

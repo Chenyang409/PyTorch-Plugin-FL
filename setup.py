@@ -37,14 +37,14 @@ def _ensure_maca_cudart_shim():
 
     MACA's libsymbol_cu.so provides CUDA runtime symbols but without the
     @@libcudart.so.12 version tags that PyTorch's .so files require.
-    We build a single shared library (csrc/runtime/accelerator/maca/csrc/cudart_shim.c) that:
+    We build a single shared library (csrc/runtime/accelerator/maca/cudart_shim.c) that:
       1. Forwards ~79 symbols to libsymbol_cu.so via dlsym
       2. Stubs ~11 symbols for APIs missing from MACA entirely
       3. Tags ALL exported symbols with @@libcudart.so.12 via a version script
     """
     import ctypes
 
-    csrc = os.path.join(BASE_DIR, "csrc", "runtime", "accelerator", "maca", "csrc")
+    csrc = os.path.join(BASE_DIR, "csrc", "runtime", "accelerator", "maca")
     build_dir = os.path.join(BASE_DIR, "build")
     os.makedirs(build_dir, exist_ok=True)
 
@@ -105,6 +105,15 @@ def build_deps():
     ]
 
     cmake_args.append(f"-DACCELERATOR={ACCELERATOR}")
+
+    # Kernel build options from environment
+    for kernel_opt in ("FLAGGEMS_KERNEL", "CUDA_KERNEL", "ASCEND_KERNEL"):
+        val = os.environ.get(kernel_opt)
+        if val is not None:
+            cmake_val = (
+                "ON" if val not in ("0", "OFF", "off", "false", "FALSE") else "OFF"
+            )
+            cmake_args.append(f"-D{kernel_opt}={cmake_val}")
 
     # FlagGems C++ library path (optional, enables low-overhead C++ dispatch)
     flaggems_dir = os.environ.get("FLAGGEMS_DIR")

@@ -5,8 +5,8 @@
 ## 特性
 
 - 自动将 FlagGems Triton 算子注册为 `flagos` 设备的 dispatch 实现
-- 可配置的后端路由：按算子粒度选择 FlagGems 或 原始的厂商后端（CUDA/MACA）
-- 目前支持 CUDA 和 MACA (MetaX) 两种硬件平台
+- 可配置的后端路由：按算子粒度选择 FlagGems 或 原始的厂商后端（CUDA/MACA/Ascend）
+- 目前支持 CUDA、MACA (MetaX) 和 Ascend 三种硬件平台
 - 完整的设备管理 API（stream、event、RNG、AMP）
 
 
@@ -180,8 +180,8 @@ export FLAGOS_LOG_DISPATCH=1  # 打印每次算子 dispatch 的后端选择
 export TORCH_DEVICE_BACKEND_AUTOLOAD=0
 
 # 基础算子测试
-pytest tests/integration/test_ops.py -v --device cuda
-pytest tests/integration/test_ops.py -v --device flagos
+pytest tests/integration/test_factory_ops.py -v --device cuda
+pytest tests/integration/test_factory_ops.py -v --device flagos
 
 # dispatch 路由测试
 pytest tests/integration/ops/ -v

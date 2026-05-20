@@ -76,6 +76,8 @@ std::unordered_map<std::string, FlagosDevice> LoadBackendConfig() {
 
     if (val == "cuda") {
       table[op] = FlagosDevice::kCuda;
+    } else if (val == "ascend") {
+      table[op] = FlagosDevice::kAscend;
     } else if (val == "flagos" || val == "flaggems") {
       table[op] = FlagosDevice::kFlagOs;
     } else {
@@ -100,6 +102,9 @@ std::unordered_map<std::string, FlagosDevice> LoadBackendConfig() {
     if (v == "cuda") {
       table[op] = FlagosDevice::kCuda;
       fprintf(stderr, "[flagos] env override: %s -> cuda\n", op.c_str());
+    } else if (v == "ascend") {
+      table[op] = FlagosDevice::kAscend;
+      fprintf(stderr, "[flagos] env override: %s -> ascend\n", op.c_str());
     } else if (v == "flagos" || v == "flaggems") {
       table[op] = FlagosDevice::kFlagOs;
       fprintf(stderr, "[flagos] env override: %s -> flaggems\n", op.c_str());

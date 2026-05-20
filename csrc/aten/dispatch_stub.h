@@ -49,7 +49,7 @@ class FlagosDispatchStub {
     switch (device) {
       case FlagosDevice::kCuda:   cuda_fn_ = fn;   break;
       case FlagosDevice::kFlagOs: flagos_fn_ = fn;  break;
-      case FlagosDevice::kNpu:    npu_fn_ = fn;     break;
+      case FlagosDevice::kAscend: ascend_fn_ = fn; break;
       case FlagosDevice::kMusa:   musa_fn_ = fn;    break;
     }
   }
@@ -73,7 +73,7 @@ class FlagosDispatchStub {
     switch (device) {
       case FlagosDevice::kCuda:   return cuda_fn_;
       case FlagosDevice::kFlagOs: return flagos_fn_;
-      case FlagosDevice::kNpu:    return npu_fn_;
+      case FlagosDevice::kAscend: return ascend_fn_;
       case FlagosDevice::kMusa:   return musa_fn_;
     }
     return nullptr;
@@ -89,7 +89,7 @@ class FlagosDispatchStub {
     switch (backend) {
       case FlagosDevice::kCuda:   name = "cuda"; break;
       case FlagosDevice::kFlagOs: name = "flagos"; break;
-      case FlagosDevice::kNpu:    name = "npu"; break;
+      case FlagosDevice::kAscend: name = "ascend"; break;
       case FlagosDevice::kMusa:   name = "musa"; break;
       default:                   name = "unknown"; break;
     }
@@ -99,7 +99,7 @@ class FlagosDispatchStub {
   const char* stub_name_ = nullptr;
   FnPtr cuda_fn_   = nullptr;
   FnPtr flagos_fn_ = nullptr;
-  FnPtr npu_fn_    = nullptr;
+  FnPtr ascend_fn_ = nullptr;
   FnPtr musa_fn_   = nullptr;
 };
 
