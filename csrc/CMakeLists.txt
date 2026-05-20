@@ -2,7 +2,7 @@ set(LIBRARY_NAME torch_fl)
 
 option(CUDA_KERNEL "Build CUDA kernel implementations" ON)
 option(FLAGGEMS_KERNEL "Build FlagGems kernel implementations" ON)
-option(MACA_KERNEL "Build MACA kernel implementations" OFF)
+option(METAX_KERNEL "Build MetaX kernel implementations" OFF)
 option(ASCEND_KERNEL "Build Ascend kernel implementations" OFF)
 
 file(GLOB_RECURSE SOURCE_FILES
@@ -20,24 +20,24 @@ endif()
 if(NOT FLAGGEMS_KERNEL)
   list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/flagos/.*")
 endif()
-if(NOT MACA_KERNEL)
-  list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/maca/.*")
+if(NOT METAX_KERNEL)
+  list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/metax/.*")
 endif()
 if(NOT ASCEND_KERNEL)
   list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/ascend/.*")
 endif()
 
-if(ACCELERATOR STREQUAL "maca")
+if(ACCELERATOR STREQUAL "metax")
   list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/cuda/.*")
-  list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/maca/.*\\.cu$")
+  list(FILTER SOURCE_FILES EXCLUDE REGEX ".*/aten/backends/metax/.*\\.cu$")
 endif()
 
 set(_torch_fl_sources ${SOURCE_FILES})
 
-if(ACCELERATOR STREQUAL "maca" AND MACA_KERNEL)
-  include(${CMAKE_SOURCE_DIR}/cmake/MacaKernels.cmake)
-  flagos_add_maca_kernel_objects(_flagos_maca_kernel_objs)
-  list(APPEND _torch_fl_sources ${_flagos_maca_kernel_objs})
+if(ACCELERATOR STREQUAL "metax" AND METAX_KERNEL)
+  include(${CMAKE_SOURCE_DIR}/cmake/MetaxKernels.cmake)
+  flagos_add_metax_kernel_objects(_flagos_metax_kernel_objs)
+  list(APPEND _torch_fl_sources ${_flagos_metax_kernel_objs})
 endif()
 
 add_library(${LIBRARY_NAME} SHARED ${_torch_fl_sources})
@@ -73,12 +73,12 @@ endif()
 
 target_include_directories(${LIBRARY_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(ACCELERATOR STREQUAL "maca")
+if(ACCELERATOR STREQUAL "metax")
   target_include_directories(${LIBRARY_NAME} PRIVATE
-    "${MACA_PATH}/tools/cu-bridge/include"
-    "${MACA_PATH}/include"
-    "${MACA_PATH}/include/mcr"
-    "${CMAKE_CURRENT_SOURCE_DIR}/aten/backends/maca")
+    "${METAX_PATH}/tools/cu-bridge/include"
+    "${METAX_PATH}/include"
+    "${METAX_PATH}/include/mcr"
+    "${CMAKE_CURRENT_SOURCE_DIR}/aten/backends/metax")
 endif()
 
 install(TARGETS ${LIBRARY_NAME}

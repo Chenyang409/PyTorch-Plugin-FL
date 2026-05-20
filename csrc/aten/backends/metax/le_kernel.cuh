@@ -8,7 +8,7 @@
 #include <ATen/native/TensorIterator.h>
 #include <c10/util/Exception.h>
 
-#include "maca_elementwise.cuh"
+#include "metax_elementwise.cuh"
 
 namespace at::native::flagos {
 
@@ -34,7 +34,7 @@ void launch_le_iter(at::TensorIteratorBase& iter) {
   bool* out = static_cast<bool*>(iter.data_ptr(0));
   const scalar_t* self = static_cast<const scalar_t*>(iter.data_ptr(1));
   const scalar_t* other = static_cast<const scalar_t*>(iter.data_ptr(2));
-  maca::launch_1d(n, le_contig_kernel<scalar_t>, out, self, other);
+  metax::launch_1d(n, le_contig_kernel<scalar_t>, out, self, other);
 }
 
 } // namespace
@@ -58,20 +58,20 @@ inline at::Tensor LeTensorKernel(
           at::ScalarType::BFloat16,
           at::ScalarType::Bool,
           sub_iter.common_dtype(),
-          "le_maca",
+          "le_metax",
           [&]() { launch_le_iter<scalar_t>(sub_iter); });
     }
     return iter.output();
   }
 
-  TORCH_CHECK(iter.is_contiguous(), "MACA le requires contiguous flagos tensors");
+  TORCH_CHECK(iter.is_contiguous(), "MetaX le requires contiguous flagos tensors");
 
   AT_DISPATCH_ALL_TYPES_AND3(
       at::ScalarType::Half,
       at::ScalarType::BFloat16,
       at::ScalarType::Bool,
       iter.common_dtype(),
-      "le_maca",
+      "le_metax",
       [&]() { launch_le_iter<scalar_t>(iter); });
 
   return iter.output();

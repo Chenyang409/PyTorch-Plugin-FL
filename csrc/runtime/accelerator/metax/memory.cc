@@ -37,7 +37,7 @@ class MemoryManager {
       if (set_err != cudaSuccess) {
         fprintf(
             stderr,
-            "[flagos-maca] cudaSetDevice(%d) failed: %s\n",
+            "[flagos-metax] cudaSetDevice(%d) failed: %s\n",
             current_device,
             cudaGetErrorString(set_err));
         return ErrorMemoryAllocation;
@@ -46,7 +46,7 @@ class MemoryManager {
       if (err != cudaSuccess || mem == nullptr) {
         fprintf(
             stderr,
-            "[flagos-maca] cudaMalloc(%zu) on device %d failed: %s\n",
+            "[flagos-metax] cudaMalloc(%zu) on device %d failed: %s\n",
             size,
             current_device,
             cudaGetErrorString(err));

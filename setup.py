@@ -16,7 +16,7 @@ from setuptools.command.editable_wheel import editable_wheel as _editable_wheel
 IS_DARWIN = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
 
-# Accelerator platform: "cuda" (default), "maca", or "ascend"
+# Accelerator platform: "cuda" (default), "metax", or "ascend"
 ACCELERATOR = os.environ.get("ACCELERATOR", "cuda").lower()
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -34,19 +34,19 @@ BUILD_COMMANDS = {
 RUN_BUILD_DEPS = any(arg in BUILD_COMMANDS for arg in sys.argv)
 
 
-def _ensure_maca_cudart_shim():
-    """On MACA, compile and load a complete cudart shim before importing torch.
+def _ensure_metax_cudart_shim():
+    """On MetaX, compile and load a complete cudart shim before importing torch.
 
-    MACA's libsymbol_cu.so provides CUDA runtime symbols but without the
+    MetaX's libsymbol_cu.so provides CUDA runtime symbols but without the
     @@libcudart.so.12 version tags that PyTorch's .so files require.
-    We build a single shared library (csrc/runtime/accelerator/maca/cudart_shim.c) that:
+    We build a single shared library (csrc/runtime/accelerator/metax/cudart_shim.c) that:
       1. Forwards ~79 symbols to libsymbol_cu.so via dlsym
-      2. Stubs ~11 symbols for APIs missing from MACA entirely
+      2. Stubs ~11 symbols for APIs missing from MetaX entirely
       3. Tags ALL exported symbols with @@libcudart.so.12 via a version script
     """
     import ctypes
 
-    csrc = os.path.join(BASE_DIR, "csrc", "runtime", "accelerator", "maca")
+    csrc = os.path.join(BASE_DIR, "csrc", "runtime", "accelerator", "metax")
     build_dir = os.path.join(BASE_DIR, "build")
     os.makedirs(build_dir, exist_ok=True)
 
@@ -76,8 +76,8 @@ def _ensure_maca_cudart_shim():
     ctypes.CDLL(shim_so, mode=ctypes.RTLD_GLOBAL)
 
 
-if ACCELERATOR == "maca":
-    _ensure_maca_cudart_shim()
+if ACCELERATOR == "metax":
+    _ensure_metax_cudart_shim()
 
 
 def make_relative_rpath_args(path):
@@ -95,41 +95,43 @@ def get_pytorch_dir():
     return os.path.dirname(os.path.realpath(torch.__file__))
 
 
-def _maca_path_from_env() -> str:
+def _metax_path_from_env() -> str:
     return (
-        os.environ.get("MACA_PATH")
+        os.environ.get("METAX_PATH")
+        or os.environ.get("METAX_HOME")
+        or os.environ.get("MACA_PATH")
         or os.environ.get("MACA_HOME")
         or "/opt/maca"
     )
 
 
-def _setup_maca_build_env(env: dict) -> str:
-    """PATH/LD_LIBRARY_PATH for mxcc/cucc and MACA runtime. Returns MACA_PATH."""
-    maca_path = _maca_path_from_env()
-    cu_bridge = os.path.join(maca_path, "tools", "cu-bridge")
+def _setup_metax_build_env(env: dict) -> str:
+    """PATH/LD_LIBRARY_PATH for mxcc/cucc and MetaX runtime. Returns METAX_PATH."""
+    metax_path = _metax_path_from_env()
+    cu_bridge = os.path.join(metax_path, "tools", "cu-bridge")
     cucc = os.path.join(cu_bridge, "bin", "cucc")
     if not os.path.isfile(cucc):
-        raise RuntimeError(f"MACA cucc/mxcc not found: {cucc}")
+        raise RuntimeError(f"MetaX cucc/mxcc not found: {cucc}")
 
-    env.setdefault("MACA_PATH", maca_path)
+    env.setdefault("METAX_PATH", metax_path)
     env["PATH"] = os.pathsep.join(
         p
         for p in (
             os.path.join(cu_bridge, "bin"),
-            os.path.join(maca_path, "bin"),
-            os.path.join(maca_path, "mxgpu_llvm", "bin"),
+            os.path.join(metax_path, "bin"),
+            os.path.join(metax_path, "mxgpu_llvm", "bin"),
             env.get("PATH", ""),
         )
         if p
     )
     ld_parts = [
-        os.path.join(maca_path, "lib"),
+        os.path.join(metax_path, "lib"),
         os.path.join(cu_bridge, "lib"),
-        os.path.join(maca_path, "mxgpu_llvm", "lib"),
+        os.path.join(metax_path, "mxgpu_llvm", "lib"),
         env.get("LD_LIBRARY_PATH", ""),
     ]
     env["LD_LIBRARY_PATH"] = os.pathsep.join(p for p in ld_parts if p)
-    return maca_path
+    return metax_path
 
 
 def _cmake_build_jobs() -> int:
@@ -156,17 +158,17 @@ def build_deps():
     ]
 
     cmake_args.append(f"-DACCELERATOR={ACCELERATOR}")
-    if ACCELERATOR == "maca":
+    if ACCELERATOR == "metax":
         cmake_args.extend(
             [
-                "-DMACA_KERNEL=ON",
+                "-DMETAX_KERNEL=ON",
                 "-DCUDA_KERNEL=OFF",
                 "-DFLAGGEMS_KERNEL=OFF",
             ]
         )
 
     # Kernel build options from environment
-    for kernel_opt in ("FLAGGEMS_KERNEL", "CUDA_KERNEL", "MACA_KERNEL", "ASCEND_KERNEL"):
+    for kernel_opt in ("FLAGGEMS_KERNEL", "CUDA_KERNEL", "METAX_KERNEL", "ASCEND_KERNEL"):
         val = os.environ.get(kernel_opt)
         if val is not None:
             cmake_val = (
@@ -184,9 +186,9 @@ def build_deps():
     build_env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(build_jobs)
     cmake = "cmake"
 
-    if ACCELERATOR == "maca":
-        maca_path = _setup_maca_build_env(build_env)
-        cmake_args.append(f"-DMACA_PATH={maca_path}")
+    if ACCELERATOR == "metax":
+        metax_path = _setup_metax_build_env(build_env)
+        cmake_args.append(f"-DMETAX_PATH={metax_path}")
         cmake_args.append("-G")
         cmake_args.append("Ninja")
     else:
@@ -223,7 +225,7 @@ def _verify_built_native_libs() -> None:
             f"Native build finished but {lib} is missing. "
             "Check cmake/ninja output above."
         )
-    if ACCELERATOR != "maca":
+    if ACCELERATOR != "metax":
         return
     try:
         undef = subprocess.check_output(
@@ -234,7 +236,7 @@ def _verify_built_native_libs() -> None:
     if "get_maca_enable_elementwise_kernel_info" in undef:
         raise RuntimeError(
             f"{lib} still references at::maca::* (mcPytorch). "
-            "Remove build/ and torch_fl/lib/*.so, then rebuild with ACCELERATOR=maca."
+            "Remove build/ and torch_fl/lib/*.so, then rebuild with ACCELERATOR=metax."
         )
 
 

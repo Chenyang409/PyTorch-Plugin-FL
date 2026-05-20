@@ -76,8 +76,8 @@ std::unordered_map<std::string, FlagosDevice> LoadBackendConfig() {
 
     if (val == "cuda") {
       table[op] = FlagosDevice::kCuda;
-    } else if (val == "maca") {
-      table[op] = FlagosDevice::kMaca;
+    } else if (val == "metax") {
+      table[op] = FlagosDevice::kMetax;
     } else if (val == "ascend") {
       table[op] = FlagosDevice::kAscend;
     } else if (val == "flagos" || val == "flaggems") {
@@ -88,7 +88,7 @@ std::unordered_map<std::string, FlagosDevice> LoadBackendConfig() {
     }
   }
 
-  // Per-op env var overrides: FLAGOS_OP_<op_name>=cuda|maca|flaggems
+  // Per-op env var overrides: FLAGOS_OP_<op_name>=cuda|metax|flaggems
   // e.g. FLAGOS_OP_mm=cuda  or  FLAGOS_OP_mm__out=cuda
   // Dots in op names are replaced with double underscores to avoid ambiguity
   // with ops that already contain underscores (e.g. mm_out vs mm.out).
@@ -104,9 +104,9 @@ std::unordered_map<std::string, FlagosDevice> LoadBackendConfig() {
     if (v == "cuda") {
       table[op] = FlagosDevice::kCuda;
       fprintf(stderr, "[flagos] env override: %s -> cuda\n", op.c_str());
-    } else if (v == "maca") {
-      table[op] = FlagosDevice::kMaca;
-      fprintf(stderr, "[flagos] env override: %s -> maca\n", op.c_str());
+    } else if (v == "metax") {
+      table[op] = FlagosDevice::kMetax;
+      fprintf(stderr, "[flagos] env override: %s -> metax\n", op.c_str());
     } else if (v == "ascend") {
       table[op] = FlagosDevice::kAscend;
       fprintf(stderr, "[flagos] env override: %s -> ascend\n", op.c_str());

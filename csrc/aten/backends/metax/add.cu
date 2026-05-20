@@ -7,6 +7,6 @@
 namespace at::native::flagos {
 
 FLAGOS_REGISTER_DISPATCH(
-    AddTensorFn, add_tensor_stub, FlagosDevice::kMaca, AddTensorKernel)
+    AddTensorFn, add_tensor_stub, FlagosDevice::kMetax, AddTensorKernel)
 
 } // namespace at::native::flagos

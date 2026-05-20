@@ -1,9 +1,9 @@
 import os
 import sys
 
-# Optional: PyTorch wheels may require libcudart.so.12 version tags on MACA.
-if os.environ.get("FLAGOS_MACA_CUDART_SHIM", "0") == "1":
-    from torch_fl.accelerator.maca._maca_cudart_shim import ensure_cudart_shim
+# Optional: PyTorch wheels may require libcudart.so.12 version tags on MetaX.
+if os.environ.get("FLAGOS_METAX_CUDART_SHIM", "0") == "1":
+    from torch_fl.accelerator.metax._metax_cudart_shim import ensure_cudart_shim
 
     ensure_cudart_shim()
 
@@ -17,15 +17,15 @@ if sys.platform == "win32":
     del _load_dll_libraries
 
 
-# Optional FlagGems-on-MACA compat (does not patch torch.cuda unless enabled).
-if os.environ.get("FLAGOS_MACA_COMPAT", "0") == "1":
-    from torch_fl.accelerator.maca._maca_compat import (  # noqa: E402
-        is_maca_available,
-        patch_torch_cuda_for_maca,
+# Optional FlagGems-on-MetaX compat (does not patch torch.cuda unless enabled).
+if os.environ.get("FLAGOS_METAX_COMPAT", "0") == "1":
+    from torch_fl.accelerator.metax._metax_compat import (  # noqa: E402
+        is_metax_available,
+        patch_torch_cuda_for_metax,
     )
 
-    if is_maca_available():
-        patch_torch_cuda_for_maca()
+    if is_metax_available():
+        patch_torch_cuda_for_metax()
 
 
 import torch_fl._C  # type: ignore[misc]  # noqa: E402, F401
@@ -111,7 +111,7 @@ _EXCLUDED_OPS = {
     "_to_copy",
     "contiguous",
     "clone",
-    # log_softmax - FlagGems Triton kernel exceeds MACA's 4KB/thread private memory
+    # log_softmax - FlagGems Triton kernel exceeds MetaX's 4KB/thread private memory
     # limit on large vocab (e.g. Qwen3 151k). Use Python decomposition instead.
     "_log_softmax",
     "_log_softmax_backward_data",

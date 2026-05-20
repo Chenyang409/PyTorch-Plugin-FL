@@ -75,7 +75,7 @@ at::Tensor _copy_from(
       }
     }
 #else
-    // On platforms with CUDA runtime (NVIDIA/MACA), box to CUDA and use
+    // On platforms with CUDA runtime (NVIDIA/MetaX), box to CUDA and use
     // TensorIterator + CUDA copy kernel without re-entering _copy_from.
     DeviceBoxingGuard guard(self, dst);
     at::native::copy_(const_cast<at::Tensor&>(dst), self, non_blocking);

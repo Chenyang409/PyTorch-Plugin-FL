@@ -6,6 +6,6 @@
 
 namespace at::native::flagos {
 
-FLAGOS_REGISTER_DISPATCH(AllFn, all_stub, FlagosDevice::kMaca, AllKernel)
+FLAGOS_REGISTER_DISPATCH(AllFn, all_stub, FlagosDevice::kMetax, AllKernel)
 
 } // namespace at::native::flagos

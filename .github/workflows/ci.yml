@@ -37,11 +37,11 @@ jobs:
     uses: ./.github/workflows/build-wheel-cuda.yml
 
   # ============================================================
-  # Job 3: Build & install check (MACA)
+  # Job 3: Build & install check (MetaX)
   # ============================================================
-  build-maca:
+  build-metax:
     needs: lint
-    uses: ./.github/workflows/build-wheel-maca.yml
+    uses: ./.github/workflows/build-wheel-metax.yml
 
   # ============================================================
   # Job 4: Integration tests (CUDA)
@@ -51,8 +51,8 @@ jobs:
     uses: ./.github/workflows/integration-test-cuda.yml
 
   # ============================================================
-  # Job 5: Integration tests (MACA)
+  # Job 5: Integration tests (MetaX)
   # ============================================================
-  integration-tests-maca:
-    needs: build-maca
-    uses: ./.github/workflows/integration-test-maca.yml
+  integration-tests-metax:
+    needs: build-metax
+    uses: ./.github/workflows/integration-test-metax.yml

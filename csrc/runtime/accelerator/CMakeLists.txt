@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 if(ACCELERATOR STREQUAL "ascend")
   project(FLAGOS_RUNTIME CXX C)
-elseif(ACCELERATOR STREQUAL "maca")
+elseif(ACCELERATOR STREQUAL "metax")
   project(FLAGOS_RUNTIME CXX C)
 else()
   project(FLAGOS_RUNTIME CUDA CXX C)
@@ -40,8 +40,8 @@ if(ACCELERATOR STREQUAL "ascend")
   target_include_directories(${LIBRARY_NAME} PUBLIC
       ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} ${CANN_INCLUDE_DIR})
   target_link_libraries(${LIBRARY_NAME} PRIVATE ${ACL_LIB})
-elseif(ACCELERATOR STREQUAL "maca")
-  file(GLOB SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/maca/*.cc")
+elseif(ACCELERATOR STREQUAL "metax")
+  file(GLOB SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/metax/*.cc")
 
   add_library(${LIBRARY_NAME} SHARED ${SOURCE_FILES})
 

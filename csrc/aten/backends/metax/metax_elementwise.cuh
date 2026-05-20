@@ -1,6 +1,6 @@
 // Copyright (c) 2026, BAAI. All rights reserved.
 //
-// Minimal elementwise launch for MACA (mxcc/cucc + cu-bridge runtime).
+// Minimal elementwise launch for MetaX (mxcc/cucc + cu-bridge runtime).
 // Does not use PyTorch CUDALoops or at::cuda::*.
 
 #pragma once
@@ -9,7 +9,7 @@
 
 #include <c10/util/Exception.h>
 
-namespace at::native::flagos::maca {
+namespace at::native::flagos::metax {
 
 inline cudaStream_t current_stream() {
   return nullptr;
@@ -27,8 +27,8 @@ inline void launch_1d(int64_t n, Kernel kernel, Args... args) {
   const cudaError_t err = cudaGetLastError();
   TORCH_CHECK(
       err == cudaSuccess,
-      "MACA kernel launch failed: ",
+      "MetaX kernel launch failed: ",
       cudaGetErrorString(err));
 }
 
-} // namespace at::native::flagos::maca
+} // namespace at::native::flagos::metax

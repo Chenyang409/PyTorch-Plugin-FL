@@ -17,11 +17,11 @@ namespace at::native::flagos {
 
 // Backend selector for unified op wrappers.
 // Determines which physical backend impl() dispatches to.
-enum class FlagosDevice { kCuda, kFlagOs, kAscend, kMusa, kMaca };
+enum class FlagosDevice { kCuda, kFlagOs, kAscend, kMusa, kMetax };
 
 // Returns the backend for a given op name, loaded once from config file at startup.
 // Config file path: $FLAGOS_BACKEND_CONFIG or torch_fl/backends.conf
-// Format: "op_name = backend"  (backend: "flagos" | "flaggems" | "cuda" | "maca")
+// Format: "op_name = backend"  (backend: "flagos" | "flaggems" | "cuda" | "metax")
 // Default when op is not listed: FlagOS.
 FlagosDevice GetBackendForOp(const std::string& op_name);
 

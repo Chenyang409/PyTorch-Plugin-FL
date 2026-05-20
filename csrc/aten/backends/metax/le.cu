@@ -1,12 +1,12 @@
 // Copyright (c) 2026, BAAI. All rights reserved.
 
-#include "../../mul.h"
+#include "../../le.h"
 
-#include "mul_kernel.cuh"
+#include "le_kernel.cuh"
 
 namespace at::native::flagos {
 
 FLAGOS_REGISTER_DISPATCH(
-    MulTensorFn, mul_tensor_stub, FlagosDevice::kMaca, MulTensorKernel)
+    LeTensorFn, le_tensor_stub, FlagosDevice::kMetax, LeTensorKernel)
 
 } // namespace at::native::flagos

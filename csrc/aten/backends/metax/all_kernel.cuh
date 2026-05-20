@@ -7,7 +7,7 @@
 #include <ATen/core/Tensor.h>
 #include <c10/util/Exception.h>
 
-#include "maca_elementwise.cuh"
+#include "metax_elementwise.cuh"
 
 namespace at::native::flagos {
 
@@ -41,22 +41,22 @@ inline at::Tensor AllKernel(const at::Tensor& self) {
   int* d_flag = nullptr;
   TORCH_CHECK(
       cudaMalloc(reinterpret_cast<void**>(&d_flag), sizeof(int)) == cudaSuccess,
-      "MACA all: cudaMalloc failed");
+      "MetaX all: cudaMalloc failed");
   TORCH_CHECK(
       cudaMemset(d_flag, 1, sizeof(int)) == cudaSuccess,
-      "MACA all: cudaMemset failed");
+      "MetaX all: cudaMemset failed");
 
   const int threads = 256;
   const int blocks = static_cast<int>((n + threads - 1) / threads);
-  all_bool_kernel<<<blocks, threads, 0, maca::current_stream()>>>(n, data, d_flag);
+  all_bool_kernel<<<blocks, threads, 0, metax::current_stream()>>>(n, data, d_flag);
   TORCH_CHECK(
       cudaGetLastError() == cudaSuccess,
-      "MACA all kernel launch failed");
+      "MetaX all kernel launch failed");
 
   int h_flag = 0;
   TORCH_CHECK(
       cudaMemcpy(&h_flag, d_flag, sizeof(int), cudaMemcpyDeviceToHost) == cudaSuccess,
-      "MACA all: cudaMemcpy failed");
+      "MetaX all: cudaMemcpy failed");
   cudaFree(d_flag);
 
   result.fill_(h_flag != 0);
