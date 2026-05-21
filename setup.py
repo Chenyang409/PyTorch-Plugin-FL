@@ -294,7 +294,12 @@ def build_deps():
         )
 
     # Kernel build options from environment
-    for kernel_opt in ("FLAGGEMS_KERNEL", "CUDA_KERNEL", "METAX_KERNEL", "ASCEND_KERNEL"):
+    for kernel_opt in (
+        "FLAGGEMS_KERNEL",
+        "CUDA_KERNEL",
+        "METAX_KERNEL",
+        "ASCEND_KERNEL",
+    ):
         val = os.environ.get(kernel_opt)
         if val is not None:
             cmake_val = (
