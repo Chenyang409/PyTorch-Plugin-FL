@@ -46,7 +46,7 @@ function(flagos_add_metax_kernel_objects out_var)
 
   set(_flags -std=c++17 -fPIC -O3 -DMETAX_ARCH=${_arch})
 
-  set(_kernels add mul le all)
+  set(_kernels add mul le all neg embedding mean mm)
   set(_objs)
   set(_obj_dir "${CMAKE_CURRENT_BINARY_DIR}/metax_kernels")
   file(MAKE_DIRECTORY "${_obj_dir}")
