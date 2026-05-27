@@ -7,6 +7,7 @@
 #include "empty.h"
 #include "strided_ops.h"
 #include "copy_ops.h"
+#include "copy_stub.h"
 #include "set_ops.h"
 #include "contiguous_ops.h"
 #include "fallback.h"
@@ -111,7 +112,7 @@ at::Tensor WrapperCopyFromAndResize(
 }
 
 at::Scalar WrapperLocalScalarDense(const at::Tensor& self) {
-  return at::native::flagos::_local_scalar_dense(self);
+  return at::native::flagos::local_scalar_dense_stub(self);
 }
 
 at::Tensor& WrapperSetSourceTensor(
@@ -158,7 +159,8 @@ at::Tensor WrapperToCopy(
     std::optional<bool> pin_memory,
     bool non_blocking,
     std::optional<c10::MemoryFormat> memory_format) {
-  return at::native::flagos::_to_copy(self, dtype, layout, device, pin_memory, non_blocking, memory_format);
+  return at::native::flagos::to_copy_stub(
+      self, dtype, layout, device, pin_memory, non_blocking, memory_format);
 }
 
 void WrapperCpuFallback(
