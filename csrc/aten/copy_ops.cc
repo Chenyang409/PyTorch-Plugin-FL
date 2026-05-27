@@ -6,6 +6,7 @@
 
 #include "copy_ops.h"
 #include "contiguous_ops.h"
+#include "copy_stub.h"
 
 #include <ATen/native/Resize.h>
 #include <ATen/ops/copy_native.h>
@@ -13,6 +14,38 @@
 #include "device_boxing.h"
 
 namespace at::native::flagos {
+
+FLAGOS_DEFINE_DISPATCH(
+    LocalScalarDenseFn, local_scalar_dense_stub, "_local_scalar_dense");
+FLAGOS_DEFINE_DISPATCH(ToCopyFn, to_copy_stub, "_to_copy");
+
+namespace {
+
+at::Scalar LocalScalarDenseKernel(const at::Tensor& self) {
+  return ::at::native::flagos::_local_scalar_dense(self);
+}
+
+at::Tensor ToCopyKernel(
+    const at::Tensor& self,
+    std::optional<c10::ScalarType> dtype,
+    std::optional<c10::Layout> layout,
+    std::optional<c10::Device> device,
+    std::optional<bool> pin_memory,
+    bool non_blocking,
+    std::optional<c10::MemoryFormat> memory_format) {
+  return ::at::native::flagos::_to_copy(
+      self, dtype, layout, device, pin_memory, non_blocking, memory_format);
+}
+
+}  // namespace
+
+FLAGOS_REGISTER_DISPATCH(
+    LocalScalarDenseFn,
+    local_scalar_dense_stub,
+    FlagosDevice::kFlagOs,
+    LocalScalarDenseKernel);
+FLAGOS_REGISTER_DISPATCH(
+    ToCopyFn, to_copy_stub, FlagosDevice::kFlagOs, ToCopyKernel);
 
 at::Tensor _copy_from(
     const at::Tensor& self,
