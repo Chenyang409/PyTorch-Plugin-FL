@@ -3,7 +3,7 @@ where.self dispatch tests
 
 Verifies that torch.where (condition, self, other):
   - produces correct results on flagos device
-  - C++ wrapper routes to metax backend
+  - C++ wrapper routes to cuda/metax backend
   - attempting flaggems backend raises an error (not implemented)
 
 Usage:
@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 
+import pytest
 import torch
 import torch_fl  # noqa: F401
 
@@ -78,6 +79,15 @@ class TestWhereCorrectness:
 
 class TestWhereDispatch:
     """Verify dispatch routing."""
+
+    def test_dispatch_log_cuda(self):
+        result = _run_subprocess(
+            {"FLAGOS_LOG_DISPATCH": "1", "FLAGOS_OP_where__self": "cuda"}
+        )
+        if result.returncode != 0 and "backend not registered" in result.stderr:
+            pytest.skip("cuda backend not available in this build")
+        assert result.returncode == 0, f"Failed:\n{result.stderr}"
+        assert "[flagos dispatch] where.self -> cuda" in result.stderr
 
     def test_dispatch_log_metax(self):
         result = _run_subprocess(
