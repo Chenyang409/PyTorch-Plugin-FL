@@ -123,7 +123,8 @@ class TestReductions:
         assert x.sum().item() == 100.0
 
     def test_mean(self, device):
-        x = torch.ones(100, device=device) * 5.0
+        x = torch.empty(100, device=device)
+        x.fill_(5.0)
         assert x.mean().item() == pytest.approx(5.0)
 
     def test_mean_dim(self, device):

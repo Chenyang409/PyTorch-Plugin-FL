@@ -88,7 +88,7 @@ void LaunchMulIter(at::TensorIteratorBase& iter) {
   } else if (iter.is_cpu_scalar(2)) {
     const opmath_t self_val = iter.scalar_value<opmath_t>(2);
     iter.remove_operand(2);
-    const scalar_t* other = static_cast<const scalar_t*>(iter.data_ptr(2));
+    const scalar_t* other = static_cast<const scalar_t*>(iter.data_ptr(1));
     metax::Launch1d(
         n, MulOtherScalarKernel<scalar_t, opmath_t>, out, self_val, other);
   } else {
@@ -118,10 +118,12 @@ inline at::Tensor MulTensorKernel(
   if (!iter.is_contiguous() && iter.numel() > 0) {
     if (self.device() != other.device()) {
       if (self.device().is_cpu() && self.numel() == 1) {
-        return MulTensorKernel(other, self.to(other.device()));
+        return MulTensorKernel(
+            other, self.to(other.device(), other.scalar_type()));
       }
       if (other.device().is_cpu() && other.numel() == 1) {
-        return MulTensorKernel(self, other.to(self.device()));
+        return MulTensorKernel(
+            self, other.to(self.device(), self.scalar_type()));
       }
     } else {
       const auto shape = iter.output().sizes();

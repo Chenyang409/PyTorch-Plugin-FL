@@ -85,7 +85,7 @@ void LaunchAddIter(at::TensorIteratorBase& iter, opmath_t alpha) {
   } else if (iter.is_cpu_scalar(2)) {
     const opmath_t self_val = iter.scalar_value<opmath_t>(2);
     iter.remove_operand(2);
-    const scalar_t* other = static_cast<const scalar_t*>(iter.data_ptr(2));
+    const scalar_t* other = static_cast<const scalar_t*>(iter.data_ptr(1));
     metax::Launch1d(
         n,
         AddOtherScalarKernel<scalar_t, opmath_t>,
@@ -122,10 +122,16 @@ inline at::Tensor AddTensorKernel(
   if (!iter.is_contiguous() && iter.numel() > 0) {
     if (self.device() != other.device()) {
       if (self.device().is_cpu() && self.numel() == 1) {
-        return AddTensorKernel(other, self.to(other.device()), alpha);
+        return AddTensorKernel(
+            other,
+            self.to(other.device(), other.scalar_type()),
+            alpha);
       }
       if (other.device().is_cpu() && other.numel() == 1) {
-        return AddTensorKernel(self, other.to(self.device()), alpha);
+        return AddTensorKernel(
+            self,
+            other.to(self.device(), self.scalar_type()),
+            alpha);
       }
     } else {
       const auto shape = iter.output().sizes();
